@@ -4,6 +4,64 @@ import numpy
 import random
 
 
+def plot_operons(dataframe, genedata, outpath, no_operons):
+    if no_operons == 0:
+        return "No plots generated"
+    
+    random_operons_single_gene = []
+    while len(random_operons_single_gene)<int(no_operons/2):
+        random_operon = dataframe.sample(n=1)
+        if random_operon['numberOfGenes'].values[0].max() != 1:
+            continue
+        if random_operon['Coverage'].values[0].max() > 10:
+             random_operons_single_gene.append(random_operon['operonName'].values[0])
+
+    random_operons_multiple_genes = []
+    while len(random_operons_multiple_genes)<int(no_operons/2):
+        random_operon = dataframe.sample(n=1)
+        if random_operon['numberOfGenes'].values[0].max() == 1:
+            continue
+        if random_operon['Coverage'].values[0].max() > 10:
+             random_operons_multiple_genes.append(random_operon['operonName'].values[0])
+
+    random_operons = random_operons_single_gene + random_operons_multiple_genes
+    print(len(random_operons))
+    for operon in random_operons:
+        operon_start = dataframe.loc[dataframe['operonName'] == operon, 'firstGeneLeftPos'].values[0]
+        operon_end = dataframe.loc[dataframe['operonName'] == operon, 'lastGeneRightPos'].values[0]
+        operon_coverage = dataframe.loc[dataframe['operonName'] == operon, 'Coverage'].values[0]
+        operonsize = abs(operon_end - operon_start)
+        edge = 0.5 * (len(operon_coverage) - operonsize)
+
+        multiple_genes = int(dataframe.loc[dataframe['operonName'] == operon, 'numberOfGenes'].values[0]) > 1
+        # Find the offsets of the start and end sites of the single genes
+        if multiple_genes:
+            genes = dataframe.loc[dataframe['operonName'] == operon, 'operonGenes'].values[0].split(';')
+            positions  = [(genedata[genedata['geneName'].str.contains(gene)]['leftEndPos'].values[0], genedata[genedata['geneName'].str.contains(gene)]['rightEndPos'].values[0]) for gene in genes]
+            offsets = [(int(x) - operon_start, int(y) - operon_start) for x, y in positions]
+            
+
+
+        x_coord=numpy.arange(-edge, operonsize + edge)
+        
+        pyplot.style.use('ggplot')
+        pyplot.figure(figsize=(12, 6))
+        pyplot.plot( x_coord, operon_coverage, color="blue")
+        pyplot.title(operon + " No genes: " + str(dataframe.loc[dataframe['operonName'] == operon, 'numberOfGenes'].values[0]))
+        pyplot.axvline(x=0, ls="-", lw="2")
+        pyplot.axvline(x=operonsize, ls="-", lw="2")
+        if multiple_genes:
+            for offset_pair in offsets:
+                pyplot.axvline(x=offset_pair[0], ls="-.", lw="1",color="blue")
+                pyplot.axvline(x=offset_pair[1], ls="-.", lw="1",color="green")
+        pyplot.xlabel('OSS = operon start site     Position     OES = operon end site')
+        pyplot.ylabel('Raw coverage')
+        pyplot.ylim(ymin = 0, ymax=operon_coverage.max()+1) 
+        pyplot.xticks([-edge, 0, operonsize/4, operonsize/2, 3*operonsize/4, operonsize,  operonsize +edge], [-edge,'OSS', round(operonsize/4), round(operonsize/2), round(3*operonsize/4), 'OES', edge])
+        pyplot.savefig(outpath+"_"+operon+"_operoncoverage.png")
+        pyplot.close()
+    return "plots generated"
+
 def plot_genes(file,outpath, no_genes):
     if no_genes == 0:
         return "No plots generated"
@@ -101,7 +159,7 @@ def plot_genes_scaled(file,outpath, window_size, exonsize, no_genes):
     # adding exon start and end to smoothing coordinates
     if 0 not in x_coord_smooth:
     	x_coord_smooth=numpy.append(x_coord_smooth, [0], axis=0)
-    
+   
     if exonsize not in x_coord_smooth:
     	x_coord_smooth=numpy.append(x_coord_smooth, [exonsize], axis=0)
     x_coord_smooth = numpy.sort(x_coord_smooth)

@@ -1,0 +1,17 @@
+Building DAG of jobs...
+Using shell: /cluster/apps/sfos/bin/bash
+Provided cores: 1
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	coverage_data_prep
+	1
+
+[Sat Nov 18 12:20:52 2023]
+rule coverage_data_prep:
+    output: ../exon_coverage_input_output/output/window_coverage_data_summed_2000_1000.csv
+    jobid: 0
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: /cluster/home/hugifl/exon_coverage/.snakemake/log/2023-11-18T122052.374699.snakemake.log
