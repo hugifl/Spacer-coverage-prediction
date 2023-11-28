@@ -3,10 +3,10 @@ window_size: '2000'       # Size of genomic windows that serve as input
 window_overlap: '1000'    # Size of overlap between windows
 genome_length: '4641652'
 mincount: '10000'         # Minimal amount of spacers per bamfile. Lower get filtered out.
-gene_perc: '10'           # Percent of lowest expressed genes (spacer count over all bam files) to get filtered out. windows that contain those genes get filtered out
+gene_perc: '15'           # Percent of lowest expressed genes (spacer count over all bam files) to get filtered out. windows that contain those genes get filtered out
 binsize: '16'             # Binsize to bin coverage profiles (should be a power of 2)
-bam_batchsize: '10'       # Size of batches of .bam files to be processed together (depends on memory)
-
+bam_batchsize: '10'       # Size of batches of .bam files to be processed together (depends on memory, decrease batchsize if you process more windows per file)
+normalization_unit : 'gene' # 'gene' or 'operon' to normalize coverage profiles to gene or operon counts
 ###################### Files ######################
 input_directory: '../exon_coverage_input_output/'
 output_directory: '../exon_coverage_input_output/output/'

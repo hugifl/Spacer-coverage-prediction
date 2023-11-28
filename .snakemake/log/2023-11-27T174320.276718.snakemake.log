@@ -1,0 +1,4 @@
+Building DAG of jobs...
+MissingInputException in line 36 of /cluster/home/hugifl/exon_coverage/Snakefile:
+Missing input files for rule all:
+../exon_coverage_input_output/output/gene/_spacer_counts.csv

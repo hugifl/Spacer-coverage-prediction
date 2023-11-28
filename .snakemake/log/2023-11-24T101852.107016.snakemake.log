@@ -1,0 +1,29 @@
+Building DAG of jobs...
+Using shell: /cluster/apps/sfos/bin/bash
+Provided cores: 1
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	all
+	1	prepare_train_test_data
+	2
+
+[Fri Nov 24 10:18:52 2023]
+rule prepare_train_test_data:
+    input: ../exon_coverage_input_output/output/XY_data_2000_1000.npz, ../exon_coverage_input_output/output/XY_data_Y_with_windows2000_1000.npz
+    output: ../exon_coverage_input_output/output/train_test_data_windows_info_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_binary_windows_info_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_binary_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_normalized_windows_info_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_normalized_2000_1000.npz
+    jobid: 3
+
+[Fri Nov 24 10:40:17 2023]
+Finished job 3.
+1 of 2 steps (50%) done
+
+[Fri Nov 24 10:40:17 2023]
+localrule all:
+    input: ../exon_coverage_input_output/output/window_coverage_data_summed_2000_1000.csv, ../exon_coverage_input_output/output/XY_data_2000_1000.npz, ../exon_coverage_input_output/output/XY_data_Y_with_windows2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_windows_info_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_binary_windows_info_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_binary_2000_1000.npz
+    jobid: 0
+
+[Fri Nov 24 10:40:17 2023]
+Finished job 0.
+2 of 2 steps (100%) done
+Complete log: /cluster/home/hugifl/exon_coverage/.snakemake/log/2023-11-24T101852.107016.snakemake.log

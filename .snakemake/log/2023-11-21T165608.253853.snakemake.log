@@ -1,0 +1,51 @@
+Building DAG of jobs...
+Using shell: /cluster/apps/sfos/bin/bash
+Provided cores: 1
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	all
+	1	coverage_data_prep
+	1	prepare_train_test_data
+	1	sequence_data_prep
+	4
+
+[Tue Nov 21 16:56:08 2023]
+rule coverage_data_prep:
+    input: ../exon_coverage_input_output/genomeBamsrestr/BSSE_QGF_134005_HY3GMBGXC_1_20191208_1_pFS_0453_MG1655_Bern_Group_Chow_Day_1_Source_Feces_Mouse_1_Day_post_switch_NA_TGGTAACG_AAGTAGAG_S1_R1_001_MM_1.bam, ../exon_coverage_input_output/genomeBamsrestr/BSSE_QGF_134006_HY3GMBGXC_1_20191208_2_pFS_0453_MG1655_Bern_Group_Chow_Day_1_Source_Feces_Mouse_2_Day_post_switch_NA_TGGTAACG_CATGCTTA_S2_R1_001_MM_1.bam, ../exon_coverage_input_output/genomeBamsrestr/BSSE_QGF_134007_HY3GMBGXC_1_20191208_3_pFS_0453_MG1655_Bern_Group_Chow_Day_1_Source_Feces_Mouse_3_Day_post_switch_NA_TGGTAACG_GCACATCT_S3_R1_001_MM_1.bam, ../exon_coverage_input_output/genomeBamsrestr/BSSE_QGF_134008_HY3GMBGXC_1_20191208_4_pFS_0453_MG1655_Bern_Group_Chow_Day_1_Source_Feces_Mouse_4_Day_post_switch_NA_TGGTAACG_TGCTCGAC_S4_R1_001_MM_1.bam, ../exon_coverage_input_output/genomeBamsrestr/BSSE_QGF_134009_HY3GMBGXC_1_20191208_5_pFS_0453_MG1655_Bern_Group_Chow_Day_1_Source_Feces_Mouse_5_Day_post_switch_NA_TGGTAACG_AGCAATTC_S5_R1_001_MM_1.bam, ../exon_coverage_input_output/genomeBamsrestr/BSSE_QGF_134010_HY3GMBGXC_1_20191208_6_pFS_0453_MG1655_Bern_Group_Starch_Day_1_Source_Feces_Mouse_6_Day_post_switch_NA_TGGTAACG_AGTTGCTT_S6_R1_001_MM_1.bam, ../exon_coverage_input_output/genomeBamsrestr/BSSE_QGF_134011_HY3GMBGXC_1_20191208_7_pFS_0453_MG1655_Bern_Group_Starch_Day_1_Source_Feces_Mouse_7_Day_post_switch_NA_TGGTAACG_CCAGTTAG_S7_R1_001_MM_1.bam, ../exon_coverage_input_output/genomeBamsrestr/BSSE_QGF_134012_HY3GMBGXC_1_20191208_8_pFS_0453_MG1655_Bern_Group_Starch_Day_1_Source_Feces_Mouse_8_Day_post_switch_NA_TGGTAACG_TTGAGCCT_S8_R1_001_MM_1.bam, ../exon_coverage_input_output/genomeBamsrestr/BSSE_QGF_134013_HY3GMBGXC_1_20191208_9_pFS_0453_MG1655_Bern_Group_Starch_Day_1_Source_Feces_Mouse_9_Day_post_switch_NA_TGGTAACG_ACACGATC_S9_R1_001_MM_1.bam, ../exon_coverage_input_output/genomeBamsrestr/BSSE_QGF_134014_HY3GMBGXC_1_20191208_10_pFS_0453_MG1655_Bern_Group_Starch_Day_1_Source_Feces_Mouse_10_Day_post_switch_NA_TGGTAACG_GGTCCAGA_S10_R1_001_MM_1.bam
+    output: ../exon_coverage_input_output/output/window_coverage_data_summed_2000_0.csv
+    jobid: 1
+
+[Tue Nov 21 16:59:07 2023]
+Finished job 1.
+1 of 4 steps (25%) done
+
+[Tue Nov 21 16:59:07 2023]
+rule sequence_data_prep:
+    input: ../exon_coverage_input_output/output/window_coverage_data_summed_2000_0.csv
+    output: ../exon_coverage_input_output/output/XY_data_2000_0.npz, ../exon_coverage_input_output/output/XY_data_Y_with_windows2000_0.npz
+    jobid: 2
+
+[Tue Nov 21 17:35:19 2023]
+Finished job 2.
+2 of 4 steps (50%) done
+
+[Tue Nov 21 17:35:19 2023]
+rule prepare_train_test_data:
+    input: ../exon_coverage_input_output/output/XY_data_2000_0.npz, ../exon_coverage_input_output/output/XY_data_Y_with_windows2000_0.npz
+    output: ../exon_coverage_input_output/output/train_test_data_windows_info_2000_0.npz, ../exon_coverage_input_output/output/train_test_data_binary_windows_info_2000_0.npz, ../exon_coverage_input_output/output/train_test_data_2000_0.npz, ../exon_coverage_input_output/output/train_test_data_binary_2000_0.npz
+    jobid: 3
+
+[Tue Nov 21 17:35:26 2023]
+Finished job 3.
+3 of 4 steps (75%) done
+
+[Tue Nov 21 17:35:26 2023]
+localrule all:
+    input: ../exon_coverage_input_output/output/window_coverage_data_summed_2000_0.csv, ../exon_coverage_input_output/output/XY_data_2000_0.npz, ../exon_coverage_input_output/output/XY_data_Y_with_windows2000_0.npz, ../exon_coverage_input_output/output/train_test_data_windows_info_2000_0.npz, ../exon_coverage_input_output/output/train_test_data_binary_windows_info_2000_0.npz, ../exon_coverage_input_output/output/train_test_data_2000_0.npz, ../exon_coverage_input_output/output/train_test_data_binary_2000_0.npz
+    jobid: 0
+
+[Tue Nov 21 17:35:26 2023]
+Finished job 0.
+4 of 4 steps (100%) done
+Complete log: /cluster/home/hugifl/exon_coverage/.snakemake/log/2023-11-21T165608.253853.snakemake.log

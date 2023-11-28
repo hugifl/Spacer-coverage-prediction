@@ -1,0 +1,19 @@
+Building DAG of jobs...
+Using shell: /cluster/apps/sfos/bin/bash
+Provided cores: 1
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	all
+	1	prepare_train_test_data
+	2
+
+[Thu Nov 23 21:53:43 2023]
+rule prepare_train_test_data:
+    input: ../exon_coverage_input_output/output/XY_data_2000_1000.npz, ../exon_coverage_input_output/output/XY_data_Y_with_windows2000_1000.npz
+    output: ../exon_coverage_input_output/output/train_test_data_windows_info_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_binary_windows_info_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_binary_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_normalized_windows_info_2000_1000.npz, ../exon_coverage_input_output/output/train_test_data_normalized_2000_1000.npz
+    jobid: 3
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: /cluster/home/hugifl/exon_coverage/.snakemake/log/2023-11-23T215343.066087.snakemake.log

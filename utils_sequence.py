@@ -12,7 +12,7 @@ def parse_fasta(fasta_file):
 
 def one_hot_encode(seq):
     # Map nucleotides to integers: A:0, C:1, G:2, T:3
-    mapping = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+    mapping = {'A': 0, 'G': 1, 'C': 2, 'T': 3}
     one_hot = numpy.zeros((len(seq), 4), dtype=int)
     for i, nucleotide in enumerate(seq):
         if nucleotide in mapping:

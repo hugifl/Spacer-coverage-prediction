@@ -1,3 +1,5 @@
+# Load the data from the tsv files from regulonDB into a pandas dataframe
+
 import pandas as pd
 
 def data_loading(tsv_file):
