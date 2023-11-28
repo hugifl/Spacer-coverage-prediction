@@ -1,0 +1,35 @@
+python exon_coverage_per_gene.py --inbamlist A.bam --genome U00096.3.gff3 --outPath output/ --winwidth 300 --exonsize 1000
+python exon_coverage_per_gene_2.py --inbamlist A.bam --genome U00096.3.gff3 --outPath output/ --winwidth 300 --exonsize 1000
+python exon_coverage_per_gene_3.py --inbamlist ../exon_coverage_input_output/A.bam --genome ../exon_coverage_input_output/U00096.3.gff3 --outPath ../exon_coverage_input_output/output/ --winwidth 300 --exonsize 1000 --plots 5
+python exon_coverage_per_gene.py --inbamlist A.bam --genome U00096.3.gff3 --outPath output/ --winwidth 300 --plots 10
+
+python exon_coverage_per_operon.py --inbamlist ../exon_coverage_input_output/A.bam --operons ../exon_coverage_input_output/OperonSet.tsv --genes ../exon_coverage_input_output/Gene_sequence.tsv --outPath ../exon_coverage_input_output/output/ --winwidth 50 --plots 5
+
+python spacer_coverage_ML_data_prep.py --inbamlist ../exon_coverage_input_output/A.bam --operons ../exon_coverage_input_output/OperonSet.tsv --genes ../exon_coverage_input_output/Gene_sequence.tsv --genome ../exon_coverage_input_output/U00096.3.fasta --outPath ../exon_coverage_input_output/output/ --winwidth 2000 --plots 5
+
+python spacer_coverage_ML_data_prep.py --inbamlist ../exon_coverage_input_output/genomeBamsrestr/BSSE_QGF_134005_HY3GMBGXC_1_20191208_1_pFS_0453_MG1655_Bern_Group_Chow_Day_1_Source_Feces_Mouse_1_Day_post_switch_NA_TGGTAACG_AAGTAGAG_S1_R1_001_MM_1.bam --operons ../exon_coverage_input_output/OperonSet.tsv --genes ../exon_coverage_input_output/Gene_sequence.tsv --genome ../exon_coverage_input_output/U00096.3.fasta --outPath ../exon_coverage_input_output/output/ --winwidth 2000 --plots 5 --count_matrix ../genomeCounts_extended_UMI.txt 
+
+python spacer_coverage_ML_data_prep.py --inbamlist ../exon_coverage_input_output/genomeBamsrestr/*.bam --operons ../exon_coverage_input_output/OperonSet.tsv --genes ../exon_coverage_input_output/Gene_sequence.tsv --genome ../exon_coverage_input_output/U00096.3.fasta --outPath ../exon_coverage_input_output/output/ --winwidth 2000 --plots 5 --count_matrix ../genomeCounts_extended_UMI.txt 
+
+python spacer_coverage_ML_data_prep.py --inbamlist ../exon_coverage_input_output/genomeBamsrestr/*.bam --operons ../exon_coverage_input_output/OperonSet.tsv --genes ../exon_coverage_input_output/Gene_sequence.tsv --genome ../exon_coverage_input_output/U00096.3.fasta --outPath ../exon_coverage_input_output/output/ --winwidth 2000 --plots 5 --count_matrix ../genomeCounts_extended_UMI.txt --coverage_df ../exon_coverage_input_output/output/window_coverage_data.csv
+
+test:
+python spacer_coverage_data_prep.py --inbamlist ../exon_coverage_input_output/genomeBamsrestr/*.bam --operons ../exon_coverage_input_output/OperonSet.tsv --genes ../exon_coverage_input_output/Gene_sequence.tsv --outPath ../exon_coverage_input_output/output/ --winwidth 2000 --plots 5 --count_matrix ../genomeCounts_extended_UMI.txt --batchsize 2
+
+
+
+full run:
+
+python spacer_coverage_data_prep.py --inbamlist ../exon_coverage_input_output/genomeBams/*.bam --operons ../exon_coverage_input_output/OperonSet.tsv --genes ../exon_coverage_input_output/Gene_sequence.tsv --outPath ../exon_coverage_input_output/output/ --winwidth 2000 --plots 5 --count_matrix ../genomeCounts_extended_UMI.txt --batchsize 10
+
+sbatch --time=20:30:45 --wrap "python spacer_coverage_data_prep.py --inbamlist ../exon_coverage_input_output/genomeBams/*.bam --operons ../exon_coverage_input_output/OperonSet.tsv --genes ../exon_coverage_input_output/Gene_sequence.tsv --outPath ../exon_coverage_input_output/output/ --winwidth 2000 --plots 5 --count_matrix ../genomeCounts_extended_UMI.txt --batchsize 10"
+
+sequence_data_prep:
+
+python sequence_data_prep.py --genome ../exon_coverage_input_output/U00096.3.fasta --operons ../exon_coverage_input_output/OperonSet.tsv --genes ../exon_coverage_input_output/Gene_sequence.tsv --outPath ../exon_coverage_input_output/output/ --winwidth 2000 --coverage_df ../exon_coverage_input_output/output/window_coverage_data_summed_full.csv
+
+
+plots: 
+
+python plot_windows.py --operons ../exon_coverage_input_output/OperonSet.tsv --genes ../exon_coverage_input_output/Gene_sequence.tsv --outPath ../exon_coverage_input_output/output/ --winwidth 2000 --coverage_df ../exon_coverage_input_output/output/window_coverage_data_summed_2000_1000.csv --binsize 16 --plots 25 --overlap 1000 --coverage_df_norm ../exon_coverage_input_output/output/train_test_data_normalized_windows_info_2000_1000.npz
+
