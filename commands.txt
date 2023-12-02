@@ -31,5 +31,5 @@ python sequence_data_prep.py --genome ../exon_coverage_input_output/U00096.3.fas
 
 plots: 
 
-python plot_windows.py --operons ../exon_coverage_input_output/OperonSet.tsv --genes ../exon_coverage_input_output/Gene_sequence.tsv --outPath ../exon_coverage_input_output/output/ --winwidth 2000 --coverage_df ../exon_coverage_input_output/output/window_coverage_data_summed_2000_1000.csv --binsize 16 --plots 25 --overlap 1000 --coverage_df_norm ../exon_coverage_input_output/output/train_test_data_normalized_windows_info_2000_1000.npz
+python plot_windows.py --operons ../exon_coverage_input_output/OperonSet.tsv --genes ../exon_coverage_input_output/Gene_sequence.tsv --outPath ../exon_coverage_input_output/output/window_coverage_plots/ --winwidth 3200 --coverage_df ../exon_coverage_input_output/output/window_coverage_data_summed_3200_1602.csv --binsize 2 --plots 25 --overlap 1602 --coverage_df_norm ../exon_coverage_input_output/output/train_test_data_normalized_windows_info_3200_1602.npz
 

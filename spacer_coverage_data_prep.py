@@ -10,7 +10,6 @@ from scipy.interpolate import interp1d
 import csv
 import pandas as pd
 import math
-from plot_genes import plot_operons
 from data_loading import data_loading
 from utils_coverage import filter_bamlist
 from utils_coverage import total_count_per_bam, bin_coverage, dataframe_to_2darray

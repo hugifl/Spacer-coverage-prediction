@@ -37,8 +37,7 @@ rule all:
     input:
         os.path.join(OUTPUTS, 'window_coverage_data_summed_' + str(WINDOW_SIZE) + '_' + str(WINDOW_OVERLAP) + '.csv'),
         os.path.join(OUTPUTS,'XY_data_Y_with_windows'+str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP)+'.npz'), #  os.path.join(OUTPUTS, 'XY_data_'+str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP)+'.npz'),
-        os.path.join(OUTPUTS,'train_test_data_binary_windows_info_' + str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP) + '.npz'),
-        os.path.join(OUTPUTS,'train_test_data_binary_' + str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP) + '.npz'),
+        os.path.join(OUTPUTS,'train_test_data_normalized_windows_info_' + str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP) + '.npz'), #os.path.join(OUTPUTS,'train_test_data_binary_windows_info_' + str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP) + '.npz'),
         os.path.join(OUTPUTS, NORMALIZATION_UNIT  + '_spacer_counts.csv')
         
 rule coverage_data_prep:
@@ -82,10 +81,7 @@ rule prepare_train_test_data:
     input:
         os.path.join(OUTPUTS,'XY_data_Y_with_windows'+str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP)+'.npz') #os.path.join(OUTPUTS, 'XY_data_'+str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP)+'.npz'),
     output:
-        os.path.join(OUTPUTS,'train_test_data_binary_windows_info_' + str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP) + '.npz'),
-        os.path.join(OUTPUTS,'train_test_data_binary_' + str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP) + '.npz'),
-        os.path.join(OUTPUTS,'train_test_data_normalized_windows_info_' + str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP) + '.npz'),
-        os.path.join(OUTPUTS,'train_test_data_normalized_' + str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP) + '.npz')
+        os.path.join(OUTPUTS,'train_test_data_normalized_windows_info_' + str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP) + '.npz') #os.path.join(OUTPUTS,'train_test_data_binary_windows_info_' + str(WINDOW_SIZE)+'_'+str(WINDOW_OVERLAP) + '.npz'),
 
 
     run:

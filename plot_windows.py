@@ -15,6 +15,7 @@ required.add_argument('-ge', '--genes', help='genome annotation file path (regul
 required.add_argument('-pl', '--plots', help='numbers of plots to be generated', required=True)
 required.add_argument('-cdf', '--coverage_df', help='coverage dataframe (df)', required = True)
 required.add_argument('-cdfn', '--coverage_df_norm', help='normalized coverage dataframe (np.array)', required = True)
+required.add_argument('-cdfb', '--coverage_df_binarized', help='binarized coverage dataframe (np.array)', required = True)
 optional.add_argument('-o', '--outPath', help='path to output directory.', default='.')
 optional.add_argument('-bs', '--binsize', help='binsize to average coverage, power of 2', type=int, default=16)
 optional.add_argument('-w', '--winwidth', help='sequence length of input sequence, default = 2000', type=int, dest='winwidth', default=2000)
@@ -34,6 +35,7 @@ plots = int(args.plots)
 binsize = int(args.binsize)
 coverage_df_file = str(args.coverage_df)
 norm_coverage_df_file = str(args.coverage_df_norm)
+bin_coverage_df_file = str(args.coverage_df_binarized)
 
 no_bin = window_size / binsize
 
@@ -46,6 +48,17 @@ X_train = data['X_train']
 X_test = data['X_test']
 Y_train = data['Y_train']
 Y_test = data['Y_test']
+
+data = np.load(bin_coverage_df_file)
+X_train_binary = data['X_train']
+X_test_binary = data['X_test']
+Y_train_binary = data['Y_train']
+Y_test_binary = data['Y_test']
+
+scaling_factor = 1e-6
+
+Y_test = Y_test[:,:2] * scaling_factor
+
 
 plots_binarized = plot_window_coverage_binarized(coverage_df_summed, window_size, operon_dataframe, gene_dataframe, plots, no_bin, binsize, outdir, random=False)
 print(plots_binarized)

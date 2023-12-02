@@ -41,9 +41,13 @@ def lowest_expressed_genes(counts_df, gene_perc):
     for _, row in counts_df.iterrows():
         spacer_count = 0
         gene_name = row['Geneid']  
+        gene_start = int(row['Start'])
+        gene_end = int(row['End'])
+        gene_start, gene_end = min(gene_start, gene_end), max(gene_start, gene_end)                                                                           
+        gene_length = gene_end - gene_start + 1
         for bam_file in counts_df.columns[6:]:
             spacer_count += row[bam_file]
-        gene_dict[gene_name] = spacer_count
+        gene_dict[gene_name] = spacer_count/gene_length
     
     sorted_genes = sorted(gene_dict, key=lambda k: gene_dict[k])
     number_to_be_dropped = int(len(sorted_genes) * (gene_perc / 100))
@@ -138,7 +142,7 @@ def process_batch(bam_batch, windows, count_dict, binsize, bam_directory):
         for window_start, window_end in windows:
             window_iv = HTSeq.GenomicInterval("U00096.3", window_start, window_end, ".")
             coverage_array = numpy.fromiter(coverage[window_iv], dtype='i', count=window_end - window_start)
-            coverage_array = coverage_array / count_dict[bam_file]  # Normalize by total number of spacers per bam file
+            #coverage_array = coverage_array / count_dict[bam_file]  # Normalize by total number of spacers per bam file          CHANGE MAYBE
             coverage_array, num_bins = bin_coverage(coverage_array, binsize)  # Bin the coverage array
             coverage_row = [window_start, window_end] + coverage_array.tolist()
             batch_coverage_list.append(coverage_row)
@@ -435,26 +439,23 @@ def normalize_coverage_per_gene(coverage_data, sequence_data, gene_spacer_counts
 
     return normalized_coverage_data, normalized_coverage_data_no_window, sequence_data
 
-def plot_window_coverage_binarized(df, window_size, operon_df, gene_df, plot_no, no_bin, binsize, outpath, random = True):
-    plot_no = int(plot_no)
+def plot_window_coverage_binarized(binarized_coverage_with_windows_info, no_plots, no_bin, outpath, window_size, operon_df, gene_df, binsize, random = True):
+    x_coord = numpy.arange(0, no_bin)               
+    no_plots = int(no_plots)
     if random:
-        windows_to_plot = df.sample(plot_no)
+        indices = numpy.random.choice(binarized_coverage_with_windows_info.shape[0], no_plots, replace=False)
     else:
-        windows_to_plot = df.iloc[-plot_no:]
+        total_entries = int(len(binarized_coverage_with_windows_info))
+        indices = range(total_entries - no_plots, total_entries)
     counter = 0
-    for _, row in windows_to_plot.iterrows():
+    for idx in indices:
         counter += 1
+        print(idx)
         print("fraction done: ")
-        print(counter / plot_no)
-        window_start, window_end = int(row['Window_Start']), int(row['Window_End'])
-
-        window_start = int(window_start)
-        window_end = int(window_end)
-        coverage = row["Pos_0":]
-        coverage = coverage.to_numpy()
-        max_coverage =  numpy.max(coverage)
-        binary_coverage = define_peaks_single_window(coverage, 0.3, 0.001)
-        binary_coverage = numpy.where(binary_coverage == 1, 0.5 * max_coverage, 0) 
+        print(counter / no_plots)
+        binarized_coverage = binarized_coverage_with_windows_info[idx, 2:]  # Skip the first two columns which contain the window start and end sites.
+        window_start = int(binarized_coverage_with_windows_info[idx, 0])
+        window_end = int(binarized_coverage_with_windows_info[idx, 1])
 
         gene_starts = []
         gene_ends = []
@@ -465,8 +466,8 @@ def plot_window_coverage_binarized(df, window_size, operon_df, gene_df, plot_no,
             if gene_row['leftEndPos'] == 'None' or gene_row['rightEndPos']  == 'None':
                 continue
             
-            gene_start = int(gene_row['leftEndPos']) - window_start -1 # -1 because genome sequenced is indexed from 0 but gene and operon locations are indexed from 1
-            gene_end = int(gene_row['rightEndPos']) - window_start -1 
+            gene_start = int(gene_row['leftEndPos']) - window_start +1 # + 1 because genome sequenced is indexed from 0 but gene and operon locations are indexed from 1
+            gene_end = int(gene_row['rightEndPos']) - window_start +1 
             
             # Ensure correct ordering of start and end
             gene_start, gene_end = min(gene_start, gene_end), max(gene_start, gene_end)
@@ -484,8 +485,8 @@ def plot_window_coverage_binarized(df, window_size, operon_df, gene_df, plot_no,
 
         # Populate operon and directionality vectors
         for _, operon in operon_df.iterrows():
-            operon_start = int(operon['firstGeneLeftPos']) - window_start -1 
-            operon_end = int(operon['lastGeneRightPos']) - window_start -1 
+            operon_start = int(operon['firstGeneLeftPos']) - window_start +1 
+            operon_end = int(operon['lastGeneRightPos']) - window_start +1 
 
             # Ensure correct ordering of start and end
             operon_start, operon_end = min(operon_start, operon_end), max(operon_start, operon_end)
@@ -499,38 +500,72 @@ def plot_window_coverage_binarized(df, window_size, operon_df, gene_df, plot_no,
 #
             if (0 <= operon_end < window_size):
                 operon_ends.append(int(operon_end/binsize))
-                #print("end of: " + operon['operonName'] + "is in this window")
-                #print("operon starts at:" + str(operon['firstGeneLeftPos']))
-                #print("operon ends at:" + str(operon['lastGeneRightPos']))
-        x_coord=numpy.arange(0, no_bin)
-        
+
+        # Plotting
         pyplot.style.use('ggplot')
         pyplot.figure(figsize=(12, 6))
-        pyplot.plot( x_coord, coverage, color="blue", label="Coverage")
-        pyplot.plot(x_coord, binary_coverage, color="red", linestyle='--', label="Binarized Coverage")
-        pyplot.title("Window from genome position " + str(window_start) + " to " + str(window_end))
-        pyplot.axvline(x=0, ls="-", lw="2", color = 'blue')
-        pyplot.axvline(x=no_bin, ls="-", lw="2", color = 'blue')
-        for gene_start in gene_starts:
-            pyplot.axvline(x=gene_start, ls="-.", lw="1",color="green")
-            pyplot.text(gene_start + (no_bin/80), coverage.max() * 0.9, 'gene start', verticalalignment='center', color='green')
-        for gene_end in gene_ends:
-            pyplot.axvline(x=gene_end, ls="-.", lw="1",color="green")
-            pyplot.text(gene_end + (no_bin/80), coverage.max() * 0.3, 'gene end', verticalalignment='center', color='green')
-        for operon_start in operon_starts:
-            pyplot.axvline(x=operon_start, ls="-", lw="1",color="red")
-            pyplot.text(operon_start + (no_bin/80), coverage.max() * 0.8, 'operon start', verticalalignment='center', color='red')
-        for operon_end in operon_ends:
-            pyplot.axvline(x=operon_end, ls="-", lw="1",color="red")
-            pyplot.text(operon_end + (no_bin/80), coverage.max() * 0.2, 'operon end', verticalalignment='center', color='red')
+        ymax = binarized_coverage.max() + (binarized_coverage.max() * 0.1)
+        pyplot.plot(x_coord, binarized_coverage, color="blue", label='Observed Coverage Normalized by Gene Expression binarized (peak yes/no)')
+        pyplot.title(f"Normalized coverage over window: {window_start}-{window_end}")
         pyplot.xlabel('Bins')
-        pyplot.ylabel('Coverage summed over bam files')
-        pyplot.ylim(ymin = 0, ymax=coverage.max()+(coverage.max()*0.1)) 
+        pyplot.ylabel('Normalized Coverage')
+        pyplot.ylim(ymin=-0.2, ymax=ymax) 
         pyplot.xticks([0, round(no_bin/4), round(no_bin/2), round(3*no_bin/4), round(no_bin)], [0, round(no_bin/4), round(no_bin/2), round(3*no_bin/4), round(no_bin)])
-        pyplot.savefig(outpath+"_"+str(window_start)+"_"+str(window_end)+"_operoncoverage.png")
-        pyplot.close()
+        for gene_start in gene_starts:
+            pyplot.axvline(x=gene_start, ls="-", lw="1.2",color="green")
+            pyplot.text(gene_start + (no_bin/80), ymax.max() * 0.9, 'gene start', verticalalignment='center', color='green')
+        for gene_end in gene_ends:
+            pyplot.axvline(x=gene_end, ls="-", lw="1.2",color="green")
+            pyplot.text(gene_end + (no_bin/80), ymax.max() * 0.3, 'gene end', verticalalignment='center', color='green')
+        for operon_start in operon_starts:
+            pyplot.axvline(x=operon_start, ls="-.", lw="1",color="red")
+            pyplot.text(operon_start + (no_bin/80), ymax.max() * 0.8, 'operon start', verticalalignment='center', color='red')
+        for operon_end in operon_ends:
+            pyplot.axvline(x=operon_end, ls="-.", lw="1",color="red")
+            pyplot.text(operon_end + (no_bin/80), ymax.max() * 0.2, 'operon end', verticalalignment='center', color='red')
+        # Plot gene and operon bodies
+        for _, gene_row in gene_df.iterrows():
+            if gene_row['leftEndPos'] == 'None' or gene_row['rightEndPos']  == 'None':
+                continue
+            gene_start = int(gene_row['leftEndPos']) - window_start + 1
+            gene_end = int(gene_row['rightEndPos']) - window_start + 1
+            gene_start, gene_end = min(gene_start, gene_end), max(gene_start, gene_end)
+            gene_name = gene_row['geneName']
 
-    return "plots generated"
+            # Check if gene start or end is within the window
+            if (0 <= gene_start < window_size) or (0 <= gene_end < window_size):
+                # Adjust for window boundaries
+                gene_start = max(0, gene_start)
+                gene_end = min(window_size - 1, gene_end)
+                gene_y = -(0.05 * ymax)
+                pyplot.hlines(y=gene_y, xmin=gene_start/binsize, xmax=gene_end/binsize, colors='green', linestyles='solid')
+                label_x_position = gene_start/binsize if gene_start >= 0 else gene_end/binsize
+                pyplot.text(label_x_position, 1.5*gene_y, gene_name, color='green', fontsize=8)
+
+        for _, operon_row in operon_df.iterrows():
+            operon_start = int(operon_row['firstGeneLeftPos']) - window_start + 1
+            operon_end = int(operon_row['lastGeneRightPos']) - window_start + 1
+            operon_start, operon_end = min(operon_start, operon_end), max(operon_start, operon_end)
+            operon_name = operon_row['operonName']
+
+            # Check if operon start or end is within the window
+            if (0 <= operon_start < window_size) or (0 <= operon_end < window_size) or ((operon_start < window_size) and (operon_end > window_size)):
+                if ((operon_start < window_size) and (operon_end > window_size)):
+                    pyplot.hlines(y=2*gene_y, xmin=0, xmax=binsize, colors='red', linestyles='solid')
+                    label_x_position = 0.5 * binsize
+                    pyplot.text(label_x_position, 2.5*gene_y, operon_name, color='red', fontsize=8)
+                else:
+                    operon_start = max(0, operon_start)
+                    operon_end = min(window_size - 1, operon_end)
+
+                    pyplot.hlines(y=2*gene_y, xmin=operon_start/binsize, xmax=operon_end/binsize, colors='red', linestyles='solid')
+                    label_x_position = operon_start/binsize if operon_start >= 0 else operon_end/binsize
+                    pyplot.text(label_x_position, 2.5*gene_y, operon_name, color='red', fontsize=8)
+        pyplot.legend()
+        pyplot.savefig(outpath+"_"+str(window_start)+"_"+str(window_end)+"_operoncoverage_normalized.png")
+        print(outpath+"_"+str(window_start)+"_"+str(window_end)+"_operoncoverage_normalized.png")
+        pyplot.close()
+    return "Plots generated"
 
 def plot_window_coverage_normalized(normalized_coverage_with_windows_info, no_plots, no_bin, outpath, window_size, operon_df, gene_df, binsize, random = True):
     x_coord = numpy.arange(0, no_bin)               
@@ -540,8 +575,13 @@ def plot_window_coverage_normalized(normalized_coverage_with_windows_info, no_pl
     else:
         total_entries = int(len(normalized_coverage_with_windows_info))
         indices = range(total_entries - no_plots, total_entries)
-
+    counter = 0
     for idx in indices:
+        counter += 1
+        print(idx)
+        print("fraction done: ")
+        print(counter / no_plots)
+        print(normalized_coverage_with_windows_info[idx, :10])
         normalized_coverage = normalized_coverage_with_windows_info[idx, 2:]  # Skip the first two columns which contain the window start and end sites.
         window_start = int(normalized_coverage_with_windows_info[idx, 0])
         window_end = int(normalized_coverage_with_windows_info[idx, 1])
@@ -652,6 +692,7 @@ def plot_window_coverage_normalized(normalized_coverage_with_windows_info, no_pl
                     pyplot.text(label_x_position, 2.5*gene_y, operon_name, color='red', fontsize=8)
         pyplot.legend()
         pyplot.savefig(outpath+"_"+str(window_start)+"_"+str(window_end)+"_operoncoverage_normalized.png")
+        print(outpath+"_"+str(window_start)+"_"+str(window_end)+"_operoncoverage_normalized.png")
         pyplot.close()
     return "Plots generated"
 
