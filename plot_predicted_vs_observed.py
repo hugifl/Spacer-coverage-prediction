@@ -2,7 +2,7 @@ from utils import plot_coverage_predicted_vs_observed_window_info_lines_log, plo
 import numpy as np
 from tensorflow.keras.models import load_model
 from custom_elements import  custom_loss_with_l1, poisson_loss
-from data_loading import data_loading
+from utils_data_loading import data_loading
 
 window_size = 3200
 overlap = 1602
