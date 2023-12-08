@@ -1,0 +1,4 @@
+Building DAG of jobs...
+MissingInputException in line 41 of /cluster/home/hugifl/spacer_coverage_prediction/Snakefile:
+Missing input files for rule all:
+../spacer_coverage_output/test_outputs/XY_data_Y_with_windows.npz

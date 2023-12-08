@@ -1,7 +1,8 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Layer
 from tensorflow.keras import backend as K
-
+import scipy
+import numpy
 # Pooling layer that applies max pooling on all channels and max pooling of the absolute values on the last channel (contains -1/1 values)
 class CustomPooling(tf.keras.layers.Layer):
     def __init__(self, pool_size, strides, padding='SAME', **kwargs):
@@ -9,26 +10,26 @@ class CustomPooling(tf.keras.layers.Layer):
         self.pool_size = pool_size
         self.strides = strides
         self.padding = padding
-        self.large_positive_value = tf.constant(2.0, dtype=tf.float32)  # Ensure it's a float
+        self.large_positive_value = tf.constant(2.0, dtype=tf.float32) 
 
     def call(self, inputs):
-        # Separate the 7th channel
-        channel_7 = inputs[..., -1:]
+        # Separate the last channel
+        last_channel = inputs[..., -1:]
 
         # Replace -1 with a large positive value
-        replaced_channel_7 = tf.where(channel_7 == -1, self.large_positive_value, channel_7)
+        replaced_last_channel = tf.where(last_channel == -1, self.large_positive_value, last_channel)
 
         # Apply max pooling on all channels except the last
         pooled = tf.nn.max_pool(inputs[..., :-1], ksize=[1, self.pool_size, 1], strides=[1, self.strides, 1], padding=self.padding)
 
-        # Apply max pooling on the 7th channel with replaced values
-        pooled_channel_7 = tf.nn.max_pool(replaced_channel_7, ksize=[1, self.pool_size, 1], strides=[1, self.strides, 1], padding=self.padding)
+        # Apply max pooling on the last channel with replaced values
+        pooled_last_channel = tf.nn.max_pool(replaced_last_channel, ksize=[1, self.pool_size, 1], strides=[1, self.strides, 1], padding=self.padding)
 
-        # Restore the original sign in the 7th channel
-        restored_channel_7 = tf.where(pooled_channel_7 == self.large_positive_value, tf.constant(-1.0, dtype=tf.float32), pooled_channel_7)
+        # Restore the original sign in the last channel
+        restored__last_channel = tf.where(pooled_last_channel == self.large_positive_value, tf.constant(-1.0, dtype=tf.float32), pooled_last_channel)
 
-        # Concatenate pooled channels and the 7th channel
-        output = tf.concat([pooled, restored_channel_7], axis=-1)
+        # Concatenate pooled channels and the last channel
+        output = tf.concat([pooled, restored__last_channel], axis=-1)
         return output
     
 # Custom binary cross entropy loss function for binary peak prediction that punishes false positives more than false negatives and does l1 regularization.
@@ -84,4 +85,13 @@ class AttentionMechanism(Layer):
 def poisson_loss(y_true, y_pred):
     return K.mean(K.maximum(.0, y_pred) - y_true * K.log(K.maximum(.0, y_pred) + K.epsilon()), axis=-1)
 
+
+class NaNChecker(tf.keras.callbacks.Callback):
+    def on_batch_end(self, batch, logs=None):
+        if numpy.isnan(logs['loss']) or numpy.isinf(logs['loss']):
+            print(f"Batch {batch}: Invalid loss, terminating training")
+            self.model.stop_training = True
     
+
+def spearman_correlation(y_true, y_pred):
+    return tf.py_function(lambda a, b: scipy.stats.spearmanr(a, b).correlation, [y_true, y_pred], tf.double)

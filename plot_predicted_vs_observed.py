@@ -1,64 +1,90 @@
-from utils import plot_coverage_predicted_vs_observed_window_info_lines_log, plot_coverage_predicted_vs_observed_window_info_lines_binary, plot_predicted_vs_observed, plot_predicted_vs_observed_window_info, plot_predicted_vs_observed_window_info_lines
+from utils_plotting import plot_predicted_vs_observed
 import numpy as np
+import pandas as pd
 from tensorflow.keras.models import load_model
-from custom_elements import  custom_loss_with_l1, poisson_loss
-from utils_data_loading import data_loading
+from custom_elements import  custom_loss_with_l1, poisson_loss, spearman_correlation
+
+##################### Set before plotting #####################
 
 window_size = 3200
-overlap = 1602
+overlap = 1600
 no_plots = 70
-no_bin = 1600
-binsize = 2
+no_bin = 200
+binsize = 16
+dataset_name = 'window_3200_overlapt_1600_binsize_16'
+model_to_load = 'CNN_BiLSTM_avg_pooling_16_dual_input_1'
+model_name = 'CNN_BiLSTM_avg_pooling_16_dual_input_1'
 
-#data = np.load('../exon_coverage_input_output/output/train_test_data_binary_'+str(window_size) + '_' + str(overlap) + '.npz')
-data = np.load('../exon_coverage_input_output/output/train_test_data_normalized_windows_info_'+str(window_size) + '_' + str(overlap) + '.npz')
+###############################################################
+outdir = '../spacer_coverage_output/'
+datadir = '/cluster/scratch/hugifl/spacer_coverage_final_data/'
+data_file = datadir + dataset_name + "_data"+"/train_test_data_normalized_windows_info_.npz"
 
+promoter_file = '../spacer_coverage_input/ECOCYC_promoters.txt'
+terminator_file = '../spacer_coverage_input/ECOCYC_terminators.txt'
+gene_file = '../spacer_coverage_input/ECOCYC_genes.txt'
+
+promoter_df = pd.read_csv(promoter_file, sep='\t')
+promoter_df.dropna(inplace=True)
+
+terminator_df = pd.read_csv(terminator_file, sep='\t')
+terminator_df.dropna(inplace=True)
+
+gene_df = pd.read_csv(gene_file, sep='\t')
+gene_df.drop(gene_df.columns[1], axis=1, inplace=True)
+gene_df.dropna(inplace=True)
+
+
+loaded_model = load_model(outdir + dataset_name + "_outputs/models/" + model_to_load, custom_objects={'poisson_loss': poisson_loss, 'spearman_correlation':spearman_correlation}) #, custom_objects={'poisson_loss': poisson_loss}
+
+data = np.load(data_file)
 X_train = data['X_train']
 X_test = data['X_test']
 Y_train = data['Y_train']
 Y_test = data['Y_test']
+# Adjust the coverage data
+
+scaling_factor = 0.5
+
+Y_test[:,2:] = Y_test[:,2:] * scaling_factor
+Y_train[:,2:] = Y_train[:,2:] * scaling_factor
 
 
-scaling_factor = 1e-6
+# Find rows with NaNs or Infs in Y_train
+rows_with_nans_or_infs = np.any(np.isnan(Y_train) | np.isinf(Y_train), axis=1)
+Y_train_filtered = Y_train[~rows_with_nans_or_infs]
+X_train_filtered = X_train[~rows_with_nans_or_infs]
 
-Y_test[:,2:] = Y_test[:,2:]  * scaling_factor
-Y_train = Y_train * scaling_factor
 # Find rows with NaNs or Infs in Y_test
-#rows_with_nans_or_infs = np.any(np.isnan(Y_test) | np.isinf(Y_test), axis=1)
-#Y_test_filtered = Y_test[~rows_with_nans_or_infs]
-#X_test_filtered = X_test[~rows_with_nans_or_infs]
-
-# Find indices where the maximum value in a row of Y_test exceeds 30 or is below 2
-indices_to_remove_test = np.where((Y_test[:, 2:] > 15).any(axis=1) | (Y_test[:, 2:].max(axis=1) < 2))[0]
-
-# Remove these rows from Y_test and X_test
-Y_test_filtered = np.delete(Y_test, indices_to_remove_test, axis=0)
-X_test_filtered = np.delete(X_test, indices_to_remove_test, axis=0)
-
-# Binarize coverage profiles
-Y_test_binarized_third_onwards = (Y_test_filtered[:, 2:] > 2).astype(int)
-Y_test_binarized = np.concatenate([Y_test_filtered[:, :2], Y_test_binarized_third_onwards], axis=1)
-
-## Remove the channel marking the operon body
-##X_test_filtered = X_test_filtered[:, :, :-1]  
-
-#small_constant = 1e-6
-#Y_test_log = np.log10(Y_test_filtered + small_constant)
-
-loaded_model = load_model('../exon_coverage_input_output/output/models_'+str(window_size) + '_' + str(overlap) + '_bin_2_unnormalized' +'/' +str(window_size) + '_' + str(overlap)  + 'CNN_BiLSTM_custom_pooling_poisson_bin2_3', custom_objects={'poisson_loss': poisson_loss}) #, custom_objects={'poisson_loss': poisson_loss}
+rows_with_nans_or_infs = np.any(np.isnan(Y_test) | np.isinf(Y_test), axis=1)
+Y_test_filtered = Y_test[~rows_with_nans_or_infs]
+X_test_filtered = X_test[~rows_with_nans_or_infs]
 
 
-tsv_file = '../exon_coverage_input_output/OperonSet.tsv'
-tsv_file_2 = '../exon_coverage_input_output/Gene_sequence.tsv'
-outpath = '../exon_coverage_input_output/output/prediction_plots/plots_' + str(window_size) + '_' + str(overlap)+ '_bin_2_unnormalized'+'/'+ 'poisson/'
+# Filter out windows that contain genes with coverage peaks too high (normalization error due to wrong/non-matching coordinates) or too low (low gene expression, noisy profile)
+indices_to_remove_train = np.where((Y_train_filtered[:,2:] > 60).any(axis=1) | (Y_train_filtered[:,2:].max(axis=1) < 2))[0]
+#
+## Remove these rows from Y_train and X_train
+Y_train_filtered = np.delete(Y_train_filtered, indices_to_remove_train, axis=0)
+X_train_filtered = np.delete(X_train_filtered, indices_to_remove_train, axis=0)
 
-operon_df = data_loading(tsv_file)
-gene_df = data_loading(tsv_file_2)
-#plots = plot_predicted_vs_observed(X_test, Y_test, loaded_model, no_plots, no_bin, outpath,str(window_size) + '_' + str(overlap) + 'CNN_binary_BiLSTM_custom_pooling_2')
-#print(plots)
+## Find indices where the maximum value in a row of Y_test exceeds 20 or is below 2
+indices_to_remove_test = np.where((Y_test_filtered[:,2:] > 60).any(axis=1) | (Y_test_filtered[:,2:].max(axis=1) < 2))[0]
+#
+## Remove these rows from Y_test and X_test
+Y_test_filtered = np.delete(Y_test_filtered, indices_to_remove_test, axis=0)
+X_test_filtered = np.delete(X_test_filtered, indices_to_remove_test, axis=0)
 
-#plots = plot_coverage_predicted_vs_observed_window_info_lines_binary(X_test_filtered, Y_test_binarized, loaded_model, no_plots, no_bin, outpath, str(window_size) + '_' + str(overlap) + 'CNN_BiLSTM_custom_pooling_binary', window_size, operon_df, gene_df, binsize)
-#print(plots)
+#Y_train_binarized = (Y_train_filtered > 2).astype(int)
+#Y_test_binarized = (Y_test_filtered > 2).astype(int)
 
-plots = plot_coverage_predicted_vs_observed_window_info_lines_log(X_test_filtered, Y_test_filtered, loaded_model, no_plots, no_bin, outpath, str(window_size) + '_' + str(overlap) + 'CNN_BiLSTM_custom_pooling_poisson_bin2_3', window_size, operon_df, gene_df, binsize)
+# Adjust the input data
+X_train_seq = X_train_filtered[:, :, :4]  # Sequence data
+X_train_anno = X_train_filtered[:, :, 4:] # Annotation data
+
+X_test_seq = X_test_filtered[:, :, :4]  # Sequence data
+X_test_anno = X_test_filtered[:, :, 4:] # Annotation data
+
+
+plots = plot_predicted_vs_observed(loaded_model, model_name, X_test_seq, X_test_anno, Y_test_filtered, no_plots, no_bin, outdir, dataset_name, window_size, promoter_df, terminator_df, gene_df, binsize)
 print(plots)

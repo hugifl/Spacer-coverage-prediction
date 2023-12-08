@@ -1,9 +1,15 @@
 
 import csv
-
-tsv_file = "/cluster/home/hugifl/exon_coverage/OperonSet.tsv"
+from utils_sequence import parse_fasta, one_hot_encode, extract_sequences_and_sequence_info, dataframe_to_2darray_keep_window_information
+from utils_coverage import gaussian_smooth_profiles
+import numpy as np
+tsv_file = "/cluster/home/hugifl/spacer_coverage_input/ECOCYC_genes.txt"
+tsv_file2 = "/cluster/home/hugifl/spacer_coverage_input/ECOCYC_promoters.txt"
+tsv_file3 = "/cluster/home/hugifl/spacer_coverage_input/ECOCYC_terminators.txt"
+coverage_df_file = "/cluster/home/hugifl/spacer_coverage_output/test_outputs/window_coverage_data_summed.csv"
 genome_file = "/cluster/home/hugifl/exon_coverage_input_output/U00096.3.fasta"
 outfile = "/cluster/home/hugifl/recordseq-workflow-dev/dev-hugi/exon_coverage/output/gene_coverage_scaled.csv"
+train_test_data_file = "/cluster/home/hugifl/spacer_coverage_output/window_3200_overlapt_1600_binsize_2_outputs/train_test_data_normalized_windows_info_.npz"
 # Open the GTF file for reading
 #counter = 0
 #maximum = 0
@@ -16,21 +22,42 @@ outfile = "/cluster/home/hugifl/recordseq-workflow-dev/dev-hugi/exon_coverage/ou
 import pandas as pd
 
 # Define the filename
+data = np.load(train_test_data_file)
+X_train = data['X_train']
+X_test = data['X_test']
+Y_train = data['Y_train']
+Y_test = data['Y_test']
+# Adjust the coverage data
 
-count_df = pd.read_csv('genomeCounts_extended_UMI.txt', sep='\t', dtype=str, low_memory=False)
+scaling_factor = 1e-7
 
-df = pd.read_csv('exon_coverage_input_output/output/window_coverage_data.csv', sep=',', dtype=str, low_memory=False)
-for col in df.columns[3:]:
-    df[col] = pd.to_numeric(df[col], errors='coerce')
+Y_test[:,2:] = Y_test[:,2:] * scaling_factor
+Y_train[:,2:] = Y_train[:,2:] * scaling_factor
+Y_tot = np.vstack((Y_test, Y_train))
+Y_tot = Y_tot[:,2:]
 
-# Drop NaN values to ensure only numeric data is considered
-numeric_df = df.iloc[:, 3:].dropna()
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Flatten the DataFrame and sort values
-flattened_series = numeric_df.stack()
-sorted_values = flattened_series.sort_values(ascending=False)
+data =  pd.read_csv(coverage_df_file, sep=',', comment="#")
+data = data.to_numpy()
+# Assuming 'data' is your dataset as a numpy array of shape (no_windows, bins_per_window)
+# Flatten the array to get a 1D array of all coverage values
+coverage_values = Y_tot.flatten()
 
-# Select the top 10 values
-top_10_values = sorted_values.head(10)
+plt.figure(figsize=(10, 6))
+plt.hist(coverage_values, bins=750, density=True)
+plt.xlabel('Read Coverage')
+plt.xlim(xmin=0, xmax=5) 
+plt.ylabel('Density')
+plt.title('Read Coverage Distribution')
+plt.savefig('/cluster/home/hugifl/spacer_coverage_output/window_3200_overlapt_1600_binsize_2_outputs/'+ "spacer_coverage_distribution.png")
+plt.close()
 
-print(top_10_values)
+#plt.figure(figsize=(10, 6))
+#sns.kdeplot(coverage_values, bw_adjust=0.5)  # Ensure sns.kdeplot is used
+#plt.xlabel('Read Coverage')
+#plt.ylabel('Density')
+#plt.title('Read Coverage Distribution')
+#plt.savefig('/cluster/home/hugifl/spacer_coverage_output/window_3200_overlapt_1600_binsize_2_outputs/'+ "spacer_coverage_distribution.png")
+#plt.close()

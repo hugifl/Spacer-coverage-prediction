@@ -1,0 +1,10 @@
+required.add_argument('-pr', '--promoters', help='genome annotation file path (ECOCYC tsv)', required=True)
+required.add_argument('-te', '--terminators', help='genome annotation file path (ECOCYC tsv)', required=True)
+
+
+promoter_file = str(args.promoters)
+terminator_file = str(args.terminators)
+
+
+promoter_df = pd.read_csv(promoter_file, sep='\t')
+terminator_df = pd.read_csv(terminator_file, sep='\t')

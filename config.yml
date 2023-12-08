@@ -1,19 +1,24 @@
+############################################# DATASET PREPARATION #############################################
+
+dataset_name: 'window_3200_overlapt_1600_binsize_2_2' # Name of the dataset
+
 ###################### Specifications ######################
 window_size: '3200'       # Size of genomic windows that serve as input
-window_overlap: '1602'    # Size of overlap between windows
+window_overlap: '1600'    # Size of overlap between windows
 genome_length: '4641652'
 mincount: '10000'         # Minimal amount of spacers per bamfile. Lower get filtered out.
 gene_perc: '15'           # Percent of lowest expressed genes (spacer count over all bam files) to get filtered out. windows that contain those genes get filtered out
 binsize: '2'             # Binsize to bin coverage profiles (should be a power of 2)
 bam_batchsize: '10'       # Size of batches of .bam files to be processed together (depends on memory, decrease batchsize if you process more windows per file)
-normalization_unit : 'gene' # 'gene' or 'operon' to normalize coverage profiles to gene or operon counts
 
 ###################### Files ######################
-input_directory: '../exon_coverage_input_output/'
-output_directory: '../exon_coverage_input_output/output/'
+input_directory: '../spacer_coverage_input/'
+output_directory: '/cluster/scratch/hugifl/spacer_coverage_final_data/'
+data_output_directory: '/cluster/home/hugifl/spacer_coverage_output/'
 
-gene_tsv: 'Gene_sequence.tsv'   # File from regulonDB with gene start and end sites and further info
-operon_tsv: 'OperonSet.tsv'     # File from regulonDB with operon start and end sites and further info
+gene_file: 'ECOCYC_genes.txt'   # File from ECOCYC with gene start and end sites and further info
+promoter_file: 'ECOCYC_promoters.txt'     # File from ECOCYC with promoter absolute + 1 positions
+terminator_file: 'ECOCYC_terminators.txt'     # File from ECOCYC with terminator start and end sites
 genome_fasta: 'U00096.3.fasta'  # Genome sequence in .fasta format
 count_matrix: 'genomeCounts_extended_UMI.txt' # Matrix with spacer counts per gene per fasta file for normalization purposes
 bam_files: 'genomeBams/'  # Spacer alignment .bam files

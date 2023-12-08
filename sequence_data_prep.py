@@ -2,19 +2,10 @@
 
 
 from __future__ import division
-import HTSeq
 import numpy
-from matplotlib import pyplot
 import argparse
-from scipy.interpolate import interp1d
-import csv
 import pandas as pd
-import math
-from utils_data_loading import data_loading
-from utils_coverage import filter_bamlist
-from utils_coverage import total_count_per_bam, bin_coverage, dataframe_to_2darray, dataframe_to_2darray_keep_window_information
-from utils_coverage import lowest_expressed_genes, filter_windows, get_windows
-from utils_sequence import parse_fasta, one_hot_encode, extract_sequences_and_sequence_info
+from utils_sequence import parse_fasta, one_hot_encode, extract_sequences_and_sequence_info, dataframe_to_2darray_keep_window_information
 
 parser = argparse.ArgumentParser()
 
@@ -24,7 +15,8 @@ required = parser.add_argument_group('required arguments')  # change grouping of
 ### inputs ###
 
 # required 
-required.add_argument('-op', '--operons', help='genome annotation file path (regulonDB tsv)', required=True)
+required.add_argument('-pr', '--promoters', help='genome annotation file path (ECOCYC tsv)', required=True)
+required.add_argument('-te', '--terminators', help='genome annotation file path (ECOCYC tsv)', required=True)
 required.add_argument('-ge', '--genes', help='genome annotation file path (regulonDB tsv)', required=True)
 required.add_argument('-gen', '--genome', help='genome sequence, raw sequence', required=True)
 required.add_argument('-cdf', '--coverage_df', help='coverage dataframe', required = True)
@@ -39,8 +31,9 @@ optional.add_argument('-ov', '--overlap', help='overlap between windows', type=i
 parser._action_groups.append(optional) 
 args = parser.parse_args()
 
-tsv_file = str(args.operons)
-tsv_file_2 = str(args.genes)
+promoter_file = str(args.promoters)
+terminator_file = str(args.terminators)
+gene_file = str(args.genes)
 genome_file = str(args.genome)
 outdir=str(args.outPath)
 window_size = int(args.winwidth)
@@ -50,20 +43,28 @@ overlap_size = int(args.overlap)
 
 ############ loading operon and gene information data ############
 
-operon_dataframe = data_loading(tsv_file)
-gene_dataframe = data_loading(tsv_file_2)
+promoter_df = pd.read_csv(promoter_file, sep='\t')
+promoter_df.dropna(inplace=True)
+
+terminator_df = pd.read_csv(terminator_file, sep='\t')
+terminator_df.dropna(inplace=True)
+
+
+gene_df = pd.read_csv(gene_file, sep='\t')
+gene_df.drop(gene_df.columns[1], axis=1, inplace=True)
+gene_df.dropna(inplace=True)
+
     
-# Load coverage dataframe (already filtered and summed)
+# Load coverage dataframe (already filtered for low expressed genes and summed over all samples)
 coverage_df_summed = pd.read_csv(coverage_df_file, sep=',', comment="#")
 
 # turn coverage data into shape that can be used in ML models
-#Y = dataframe_to_2darray(coverage_df_summed) 
-Y_window = dataframe_to_2darray_keep_window_information(coverage_df_summed) 
+Y = dataframe_to_2darray_keep_window_information(coverage_df_summed) 
 
 # produce input data X (DNA sequence, gene and operon start/end sites, gene direction)
 genome = parse_fasta(genome_file)
-X = extract_sequences_and_sequence_info(coverage_df_summed, genome, window_size, operon_dataframe, gene_dataframe)
+X = extract_sequences_and_sequence_info(coverage_df_summed, genome, window_size, gene_df, promoter_df, terminator_df)
 
 #numpy.savez(outdir+'XY_data_'+str(window_size)+'_'+str(overlap_size)+'.npz', X=X, Y=Y)
 
-numpy.savez(outdir+'XY_data_Y_with_windows'+str(window_size)+'_'+str(overlap_size)+'.npz', X=X, Y=Y_window)
+numpy.savez(outdir+'XY_data_Y_with_windows.npz', X=X, Y=Y)

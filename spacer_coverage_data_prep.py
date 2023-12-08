@@ -10,10 +10,9 @@ from scipy.interpolate import interp1d
 import csv
 import pandas as pd
 import math
-from data_loading import data_loading
 from utils_coverage import filter_bamlist
-from utils_coverage import total_count_per_bam, bin_coverage, dataframe_to_2darray
-from utils_coverage import lowest_expressed_genes, filter_windows, get_windows, process_batch
+from utils_coverage import total_count_per_bam
+from utils_coverage import get_normalized_spacer_counts_per_gene, filter_windows, get_windows, process_batch
 
 
 parser = argparse.ArgumentParser()
@@ -25,8 +24,7 @@ required = parser.add_argument_group('required arguments')  # change grouping of
 
 # required 
 required.add_argument('-i','--inbamlist',  nargs='+', help='array of bam files with path', required=True)
-required.add_argument('-op', '--operons', help='genome annotation file path (regulonDB tsv)', required=True)
-required.add_argument('-ge', '--genes', help='genome annotation file path (regulonDB tsv)', required=True)
+required.add_argument('-ge', '--genes', help='genome annotation file path (ECOCYC tsv)', required=True)
 required.add_argument('-cou', '--count_matrix', help='matrix with gene counts per sample', required=True)
 
 # optional
@@ -43,10 +41,8 @@ optional.add_argument('-bas', '--batchsize', help='batchsize of bamfiles to proc
 
 parser._action_groups.append(optional) 
 args = parser.parse_args()
-
 bamlist = args.inbamlist
-tsv_file = str(args.operons)
-tsv_file_2 = str(args.genes)
+gene_file = str(args.genes)
 outdir=str(args.outPath)
 window_size = int(args.winwidth)
 overlap_size = int(args.overlap)
@@ -58,9 +54,13 @@ binsize = int(args.binsize)
 batch_size = int(args.batchsize)
 ############ loading operon and gene information data ############
 
-operon_dataframe = data_loading(tsv_file)
-gene_dataframe = data_loading(tsv_file_2)
+gene_df = pd.read_csv(gene_file, sep='\t')
+gene_df.drop(gene_df.columns[1], axis=1, inplace=True)
+gene_df.dropna(inplace=True)
+
+
 count_df = pd.read_csv(count_matrix, sep='\t', dtype=str, low_memory=False)
+
 for col in count_df.columns[5:]:
     count_df[col] = pd.to_numeric(count_df[col], errors='coerce')
     
@@ -90,12 +90,12 @@ for i in range(0, len(bamlist), batch_size):
         coverage_df_summed = pd.concat([coverage_df_summed, batch_coverage_summed]).groupby(['Window_Start', 'Window_End']).sum().reset_index()
 
 # Filter out windows that contain low-expressed genes
-low_expressed_genes = lowest_expressed_genes(count_df, gene_perc)       
-coverage_df_summed = filter_windows(coverage_df_summed, low_expressed_genes, gene_dataframe)   
-print("filtering done")
+low_expressed_genes, gene_spacer_counts_normalized_df = get_normalized_spacer_counts_per_gene(count_df, gene_perc, count_dict)       
+coverage_df_summed = filter_windows(coverage_df_summed, low_expressed_genes, gene_df)   
 
 # Save data frame
-coverage_df_summed.to_csv(outdir+'window_coverage_data_summed_'+str(window_size)+'_'+str(overlap_size)+'.csv', index=False)
+gene_spacer_counts_normalized_df.to_csv(outdir+'gene_spacer_counts.csv', index=False)
+coverage_df_summed.to_csv(outdir+'window_coverage_data_summed.csv', index=False)
 
 
 

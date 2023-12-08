@@ -10,6 +10,11 @@ def parse_fasta(fasta_file):
             genome += line.strip()
     return genome
 
+def dataframe_to_2darray_keep_window_information(df):
+    coverage_array = df.to_numpy()
+
+    return coverage_array
+
 def one_hot_encode(seq):
     # Map nucleotides to integers: A:0, C:1, G:2, T:3
     mapping = {'A': 0, 'G': 1, 'C': 2, 'T': 3}
@@ -19,7 +24,7 @@ def one_hot_encode(seq):
             one_hot[i, mapping[nucleotide]] = 1
     return one_hot
 
-def extract_sequences_and_sequence_info(df, genome, window_size, operon_df, gene_df):
+def extract_sequences_and_sequence_info(df, genome, window_size, gene_df, promoter_df, terminator_df):
     print("start building sequence dataset")
     sequences = []
 
@@ -27,62 +32,70 @@ def extract_sequences_and_sequence_info(df, genome, window_size, operon_df, gene
     counter = 0
     for _, row in df.iterrows():
         counter += 1
-        print("fraction done: ")
-        print(counter / no_rows)
+        #print("fraction done: ")
+        #print(counter / no_rows)
         window_start, window_end = int(row['Window_Start']), int(row['Window_End'])
         seq = genome[window_start:window_end]
-        if len(seq) != window_size:  
-            print("Window size doesn't match effective size of windows")
-            continue
 
         # One-hot encode DNA sequence
         encoded_seq = one_hot_encode(seq)
         # Initialize binary vectors
         gene_vector = numpy.zeros(window_size, dtype=int)
-        operon_vector = numpy.zeros(window_size, dtype=int)
-        operon_directionality_vector = numpy.zeros(window_size, dtype=int)
+        promoter_vector = numpy.zeros(window_size, dtype=int)
+        terminator_vector = numpy.zeros(window_size, dtype=int)
+        gene_directionality_vector = numpy.zeros(window_size, dtype=int)
 
         # Populate gene vector
         for _, gene_row in gene_df.iterrows():
 
-            if gene_row['leftEndPos'] == 'None' or gene_row['rightEndPos']  == 'None':
+            if gene_row['Left'] == 'None' or gene_row['Right']  == 'None':
                 continue
-            
-            gene_start = int(gene_row['leftEndPos']) - window_start -1 # -1 because genome sequenced is indexed from 0 but gene and operon locations are indexed from 1
-            gene_end = int(gene_row['rightEndPos']) - window_start -1 
+            #print("gene row: ")
+            #print(gene_row)
+            #print("gene row left: ")
+            #print(gene_row['Left'])
+            #print("gene row right: ")
+            #print(gene_row['Right'])
+            gene_start = int(gene_row['Left']) - window_start 
+            gene_end = int(gene_row['Right']) - window_start 
             if 0 <= gene_start < window_size:
                 gene_vector[gene_start] = 1
             if 0 <= gene_end < window_size:
                 gene_vector[gene_end] = 1
+            
+            gene_strand = 1 if gene_row['Direction'] == '+' else -1
 
-        # Populate operon and directionality vectors
-        for _, operon in operon_df.iterrows():
-            operon_start = int(operon['firstGeneLeftPos']) - window_start -1 
-            operon_end = int(operon['lastGeneRightPos']) - window_start -1 
-            operon_strand = 1 if operon['strand'] == 'forward' else -1
+            if (0 <= gene_start < window_size) or (0 <= gene_end < window_size) or (gene_start <= 0 and gene_end >= window_size):
 
-            # Ensure correct ordering of start and end
-            operon_start, operon_end = min(operon_start, operon_end), max(operon_start, operon_end)
+                gene_start = max(0, gene_start)
+                gene_end = min(window_size - 1, gene_end)
 
+                # Gene body is 1 or -1 depending on directionality (0 if no operon present)
+                gene_directionality_vector[gene_start:gene_end] = gene_strand
+
+        # Populate promoter vector
+        for _, promoter in promoter_df.iterrows():
+            promoter_pos = int(promoter['Absolute_Plus_1_Position']) - window_start 
+           
             # start and end sites of operons are marked
-            if (0 <= operon_start < window_size):
-                operon_vector[operon_start] = 1
+            if (0 <= promoter_pos < window_size):
+                promoter_vector[promoter_pos] = 1
 
-            if (0 <= operon_end < window_size):
-                operon_vector[operon_end] = 1
+        # Populate terminator vector
+        for _, terminator in terminator_df.iterrows():
+            terminator_start = int(terminator['Left_End_Position']) - window_start 
+            terminator_end = int(terminator['Right_End_Position']) - window_start 
+            
+            if (0 <= terminator_start < window_size) or (0 <= terminator_end < window_size):
 
-            # check if any part of the operon is within the window
-            if (0 <= operon_start < window_size) or (0 <= operon_end < window_size) or (operon_start < 0 and operon_end >= window_size):
+                terminator_start = max(0, terminator_start)
+                terminator_end = min(window_size - 1, terminator_end)
 
-                operon_start = max(0, operon_start)
-                operon_end = min(window_size - 1, operon_end)
-
-                # Operon body is 1 or -1 depending on directionality (0 if no operon present)
-                operon_directionality_vector[operon_start:operon_end + 1] = operon_strand
-
+                # Termminator is marked
+                terminator_vector[terminator_start:terminator_end] = 1
 
         # Concatenate all vectors
-        full_vector = numpy.concatenate((encoded_seq, gene_vector[:, None], operon_vector[:, None], operon_directionality_vector[:, None]), axis=1)
+        full_vector = numpy.concatenate((encoded_seq, gene_vector[:, None], promoter_vector[:, None], terminator_vector[:, None], gene_directionality_vector[:, None]), axis=1)
         sequences.append(full_vector)
 
     return numpy.array(sequences)
