@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from utils_train_test_data import custom_train_test_split, normalize_coverage_per_gene, replace_ones
+from utils_train_test_data import custom_train_test_split, normalize_coverage_per_gene, replace_ones, gaussian_smooth_profiles
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -44,3 +44,8 @@ Y_normalized_window, Y_normalized, X_norm =  normalize_coverage_per_gene(Y, X, s
 
 X_train, X_test, Y_train, Y_test = custom_train_test_split(X_norm, Y_normalized_window, window_size, overlap_size, 0.05,  random_state=None)
 np.savez(outdir + 'train_test_data_normalized_windows_info_.npz', X_train=X_train, X_test=X_test, Y_train=Y_train, Y_test=Y_test)
+
+Y_test_smoothed = gaussian_smooth_profiles(Y_test, sigma=3)
+Y_train_smoothed = gaussian_smooth_profiles(Y_train, sigma=3)
+
+np.savez(outdir + 'train_test_data_normalized_windows_info_smoothed.npz', X_train=X_train, X_test=X_test, Y_train=Y_train_smoothed, Y_test=Y_test_smoothed)

@@ -21,8 +21,10 @@ MINCOUNT = int(config['mincount'])
 GENE_PERC = int(config['gene_perc'])
 BINSIZE = int(config['binsize'])
 BATCHSIZE = int(config['bam_batchsize'])
+BAMFILE_START = str(config['bamfile_start'])
 
-INPUTS = config['input_directory']
+INPUTS_ANNOTATION = config['input_directory_annotation']
+INPUTS_READS = config['input_directory_reads']
 OUTDIR = config['output_directory']
 DATA_OUTDIR = config['data_output_directory']
 
@@ -32,7 +34,7 @@ TERMINATORS = config['terminator_file']
 GENOME = config['genome_fasta']
 COUNTS = config['count_matrix']
 BAMS = config['bam_files']
-BAM_FILES = glob.glob(os.path.join(INPUTS, BAMS, '*.bam'))
+BAM_FILES = glob.glob(os.path.join(INPUTS_READS, BAMS, '*.bam'))
 
 OUTPUTS = os.path.join(OUTDIR, DATASET+"_outputs/")
 
@@ -62,9 +64,9 @@ rule spacer_coverage_data_prep:
     run:
         shell('python spacer_coverage_data_prep.py \
                     --inbamlist {BAM_FILES} \
-                    --genes {INPUTS}{GENES} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
-                    --count_matrix {INPUTS}{COUNTS} --batchsize {BATCHSIZE} --binsize {BINSIZE} --genomelen {GENOME_LENGTH} \
-                    --overlap {WINDOW_OVERLAP} --mincount {MINCOUNT} --geneperc {GENE_PERC}')
+                    --genes {INPUTS_ANNOTATION}{GENES} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
+                    --count_matrix {INPUTS_ANNOTATION}{COUNTS} --batchsize {BATCHSIZE} --binsize {BINSIZE} --genomelen {GENOME_LENGTH} \
+                    --overlap {WINDOW_OVERLAP} --mincount {MINCOUNT} --geneperc {GENE_PERC} --bamfile_start {BAMFILE_START}')
 
 
 rule sequence_data_prep:
@@ -75,9 +77,9 @@ rule sequence_data_prep:
 
     run:
         shell('python sequence_data_prep.py \
-                    --promoters {INPUTS}{PROMOTERS} --terminators {INPUTS}{TERMINATORS} \
-                    --genes {INPUTS}{GENES} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
-                    --genomelen {GENOME_LENGTH} --genome {INPUTS}{GENOME} \
+                    --promoters {INPUTS_ANNOTATION}{PROMOTERS} --terminators {INPUTS_ANNOTATION}{TERMINATORS} \
+                    --genes {INPUTS_ANNOTATION}{GENES} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
+                    --genomelen {GENOME_LENGTH} --genome {INPUTS_ANNOTATION}{GENOME} \
                     --overlap {WINDOW_OVERLAP} --coverage_df {input}')
 
 

@@ -67,5 +67,3 @@ Y_train[:,2:] = Y_train[:,2:] * scaling_factor
 #print(plots_binarized)
 plots_normalized = plot_window_coverage_normalized(Y_test, plots, no_bin, outdir, dataset_name, window_size,promoter_df, terminator_df, gene_df, binsize, random=False)
 print(plots_normalized)
-
-

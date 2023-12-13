@@ -1,6 +1,7 @@
 from sklearn.utils import shuffle
 import numpy as np
 import pandas as pd
+from scipy.ndimage import gaussian_filter1d
 
 # A function replacing 1s in a vector with the closest non-1 value
 def replace_ones(vector):
@@ -114,10 +115,11 @@ def normalize_coverage_per_gene(coverage_data, sequence_data, gene_spacer_counts
 
     return normalized_coverage_data, normalized_coverage_data_no_window, sequence_data
 
-def custom_train_test_split(X, Y, window_size, overlap, test_size,  random_state=None):
+def custom_train_test_split(X, Y, window_size, overlap, test_size, random_state=None):
     
     if random_state is not None:
         np.random.seed(random_state)
+
     # Calculate the number of samples
     n_samples = X.shape[0]
 
@@ -128,17 +130,38 @@ def custom_train_test_split(X, Y, window_size, overlap, test_size,  random_state
     # The safety margin is the number of windows needed to cover the overlap
     safety_margin = int(overlap / (window_size - overlap))
 
-    # Calculate the start index for the test set
-    test_start_index = n_samples - n_test_samples - safety_margin
+    # Calculate the start and end indexes for the test set
+    test_start_index = (n_samples // 2 ) - (n_test_samples // 2) 
+    test_end_index = test_start_index + n_test_samples 
+
 
     # Split the data into training and testing sets
-    X_train = X[:test_start_index]
-    Y_train = Y[:test_start_index]
-    X_test = X[test_start_index + safety_margin:]
-    Y_test = Y[test_start_index + safety_margin:]
+    X_train = np.concatenate((X[:(test_start_index - safety_margin)], X[(test_end_index + safety_margin):]), axis=0)
+    Y_train = np.concatenate((Y[:(test_start_index - safety_margin)], Y[(test_end_index + safety_margin):]), axis=0)
+    X_test = X[test_start_index:test_end_index]
+    Y_test = Y[test_start_index:test_end_index]
 
     X_train, Y_train = shuffle(X_train, Y_train, random_state=random_state)
     X_test, Y_test = shuffle(X_test, Y_test, random_state=random_state)
 
     return X_train, X_test, Y_train, Y_test
 
+def gaussian_smooth_profiles(Y, sigma=2):
+    """
+    Apply Gaussian smoothing to each coverage profile in Y_train.
+
+    Parameters:
+    Y_train (numpy.ndarray): 2D array where each row is a coverage profile.
+    sigma (float): Standard deviation for Gaussian kernel.
+
+    Returns:
+    numpy.ndarray: Smoothed coverage profiles.
+    """
+    # Define a lambda function for applying Gaussian smoothing to a single profile
+    smooth_func = lambda profile: gaussian_filter1d(profile, sigma=sigma)
+
+    # Apply the smoothing function to each row (coverage profile) in Y_train
+    Y_smoothed = Y
+    Y_smoothed[:,2:] = np.apply_along_axis(smooth_func, axis=1, arr=Y[:,2:])
+
+    return Y_smoothed

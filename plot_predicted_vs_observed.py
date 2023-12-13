@@ -9,16 +9,16 @@ from custom_elements import  custom_loss_with_l1, poisson_loss, spearman_correla
 window_size = 3200
 overlap = 1600
 no_plots = 70
-no_bin = 200
-binsize = 16
-dataset_name = 'window_3200_overlapt_1600_binsize_16'
-model_to_load = 'CNN_BiLSTM_avg_pooling_16_dual_input_1'
-model_name = 'CNN_BiLSTM_avg_pooling_16_dual_input_1'
+no_bin = 800
+binsize = 4
+dataset_name = 'paraquat_window_3200_overlapt_1600_binsize_4'
+model_to_load = 'CNN_BiLSTM_custom_pooling_dual_input_4_2'
+model_name = 'CNN_BiLSTM_custom_pooling_dual_input_4_2'
 
 ###############################################################
 outdir = '../spacer_coverage_output/'
 datadir = '/cluster/scratch/hugifl/spacer_coverage_final_data/'
-data_file = datadir + dataset_name + "_data"+"/train_test_data_normalized_windows_info_.npz"
+data_file = datadir + dataset_name + "_data"+"/train_test_data_normalized_windows_info_smoothed.npz"
 
 promoter_file = '../spacer_coverage_input/ECOCYC_promoters.txt'
 terminator_file = '../spacer_coverage_input/ECOCYC_terminators.txt'
@@ -44,7 +44,7 @@ Y_train = data['Y_train']
 Y_test = data['Y_test']
 # Adjust the coverage data
 
-scaling_factor = 0.5
+scaling_factor = 1
 
 Y_test[:,2:] = Y_test[:,2:] * scaling_factor
 Y_train[:,2:] = Y_train[:,2:] * scaling_factor
@@ -62,14 +62,14 @@ X_test_filtered = X_test[~rows_with_nans_or_infs]
 
 
 # Filter out windows that contain genes with coverage peaks too high (normalization error due to wrong/non-matching coordinates) or too low (low gene expression, noisy profile)
-indices_to_remove_train = np.where((Y_train_filtered[:,2:] > 60).any(axis=1) | (Y_train_filtered[:,2:].max(axis=1) < 2))[0]
+indices_to_remove_train = np.where((Y_train_filtered[:,2:] > 200).any(axis=1) | (Y_train_filtered[:,2:].max(axis=1) < 5))[0]
 #
 ## Remove these rows from Y_train and X_train
 Y_train_filtered = np.delete(Y_train_filtered, indices_to_remove_train, axis=0)
 X_train_filtered = np.delete(X_train_filtered, indices_to_remove_train, axis=0)
 
 ## Find indices where the maximum value in a row of Y_test exceeds 20 or is below 2
-indices_to_remove_test = np.where((Y_test_filtered[:,2:] > 60).any(axis=1) | (Y_test_filtered[:,2:].max(axis=1) < 2))[0]
+indices_to_remove_test = np.where((Y_test_filtered[:,2:] > 200).any(axis=1) | (Y_test_filtered[:,2:].max(axis=1) < 5))[0]
 #
 ## Remove these rows from Y_test and X_test
 Y_test_filtered = np.delete(Y_test_filtered, indices_to_remove_test, axis=0)

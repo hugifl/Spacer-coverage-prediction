@@ -1,7 +1,7 @@
 
 import pandas as pd
 from utils_sequence import parse_fasta, one_hot_encode, extract_sequences_and_sequence_info, dataframe_to_2darray_keep_window_information
-from utils_coverage import gaussian_smooth_profiles
+
 from utils_plotting import plot_window_coverage_normalized
 import numpy as np
 
@@ -24,13 +24,14 @@ genome_file = "/cluster/home/hugifl/exon_coverage_input_output/U00096.3.fasta"
 outfile = "/cluster/home/hugifl/spacer_coverage_output/"
 train_test_data_file = "/cluster/scratch/hugifl/spacer_coverage_final_data/window_3200_overlapt_1600_binsize_2_2_data/train_test_data_normalized_windows_info_.npz"
 outdir = "/cluster/scratch/hugifl/spacer_coverage_final_data/window_3200_overlapt_1600_binsize_2_2_data/"
+count_file = "/cluster/home/hugifl/spacer_coverage_input/genomeCounts_UMI_paraquat.txt"
 promoter_df = pd.read_csv(tsv_file2, sep='\t')
 promoter_df.dropna(inplace=True)
 
 terminator_df = pd.read_csv(tsv_file3, sep='\t')
 terminator_df.dropna(inplace=True)
 
-
+count_df = pd.read_csv(count_file, sep='\t')
 gene_df = pd.read_csv(tsv_file, sep='\t')
 gene_df.drop(gene_df.columns[1], axis=1, inplace=True)
 gene_df.dropna(inplace=True)
@@ -43,7 +44,6 @@ gene_df.dropna(inplace=True)
 #        maximum = end
 #
 #print(maximum)
-import pandas as pd
 
 # Define the filename
 data = np.load(train_test_data_file)
@@ -53,21 +53,22 @@ Y_train = data['Y_train']
 Y_test = data['Y_test']
 # Adjust the coverage data
 
-#scaling_factor = 0.5
-#
-#Y_test[:,2:] = Y_test[:,2:] * scaling_factor
-#Y_train[:,2:] = Y_train[:,2:] * scaling_factor
-#Y_tot = np.vstack((Y_test, Y_train))
-#Y_tot = Y_tot
-#
-#Y_tot_smoothed = gaussian_smooth_profiles(Y_tot, sigma=3)
+import pandas as pd
+
+# Example DataFrame creation
+# df = pd.read_csv('your_file.csv')  # Uncomment this line to read from a CSV file
 
 
 
-Y_test_smoothed = gaussian_smooth_profiles(Y_test, sigma=3)
-Y_train_smoothed = gaussian_smooth_profiles(Y_train, sigma=3)
+# Function to process column names
+def process_column_name(col_name):
+    if col_name.startswith('/cluster/scratch/hugifl/paraquat_run_1/outputs_umi/alignments/genomeBams/'):
+        # Split on 'S' and keep the part including and after 'S'
+        return 'S' + col_name.split('S', 1)[1]
+    return col_name
 
-np.savez(outdir + 'train_test_data_normalized_windows_info_smoothed.npz', X_train=X_train, X_test=X_test, Y_train=Y_train_smoothed, Y_test=Y_test_smoothed)
+# Apply the function to each column name
+count_df.columns = [process_column_name(col) for col in count_df.columns]
+# Assuming your DataFrame is named df
+count_df.to_csv('/cluster/home/hugifl/spacer_coverage_input/genomeCounts_UMI_paraquat2.txt', sep='\t', index=False)
 
-#plots_normalized = plot_window_coverage_normalized(Y_tot_smoothed, no_plots, no_bin, outdir, dataset_name, window_size,promoter_df, terminator_df, gene_df, binsize, random=False)
-#print(plots_normalized)

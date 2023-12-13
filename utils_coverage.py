@@ -20,12 +20,12 @@ def get_windows(genome_length,window_size,overlap_size):
 
 def filter_bamlist(bamlist, counts_df, mincount):
     filtered_bamlist = []
-
     for bam_file in counts_df.columns[6:]:  
         total_count = counts_df[bam_file].sum()
         if total_count >= mincount:
             filtered_bamlist.append(bam_file)
-
+    print("start of bamlist: " + str(bamlist[:5]))
+    print("start of filtered bamlist: " + str(filtered_bamlist[:5]))
     return [bam for bam in bamlist if bam in filtered_bamlist]
 
 def total_count_per_bam(counts_df):
@@ -98,22 +98,22 @@ def process_batch(bam_batch, windows, count_dict, binsize, bam_directory):
     for bam_file in bam_batch:
         bam_file_full = bam_directory + bam_file
         bamfile = HTSeq.BAM_Reader(bam_file_full)
-        coverage = HTSeq.GenomicArray("auto", stranded=True, typecode="i")   # set stranded to true 
-
+        coverage = HTSeq.GenomicArray("auto", stranded=False, typecode="i")
+    
         # Read through the bam file and add coverage
         for almnt in bamfile:
             if almnt.aligned:
-                if almnt.iv.strand == "-":                # only counting spacers on the reverse strand
-                    coverage[almnt.iv] += 1
+                coverage[almnt.iv] += 1
 
         # Calculate coverage for each window and store it
         for window_start, window_end in windows:
-            window_iv = HTSeq.GenomicInterval("U00096.3", window_start, window_end, "-")
+            window_iv = HTSeq.GenomicInterval("NC_000913.3", window_start, window_end, ".") # U00096.3
             coverage_array = numpy.fromiter(coverage[window_iv], dtype='i', count=window_end - window_start)
             #coverage_array = coverage_array / count_dict[bam_file]  # Normalize by total number of spacers per bam file          CHANGE MAYBE
             coverage_array, num_bins = bin_coverage(coverage_array, binsize)  # Bin the coverage array
             coverage_row = [window_start, window_end] + coverage_array.tolist()
             batch_coverage_list.append(coverage_row)
+            
 
     # Convert to DataFrame
     batch_coverage_columns = ['Window_Start', 'Window_End'] + [f'Pos_{i}' for i in range(num_bins)]
@@ -191,7 +191,7 @@ def get_operon_spacer_counts(count_df, gene_df, operon_df):
 
     return operon_spacer_counts_df
 
-def get_gene_spacer_counts(count_df, gene_df):
+def get_gene_spacer_counts(count_df, gene_df): # no used (?)
     # Create a dictionary to store gene spacer counts
     gene_spacer_counts_normalized = {}
     no_genes = count_df.shape[0]
@@ -224,7 +224,7 @@ def get_gene_spacer_counts(count_df, gene_df):
 
     return gene_spacer_counts_normalized_df
 
-
+# The normalization factors (gene expression) are calculated from the count matrix with the forward reads also while the coverage is calculated from only reverse reads.
 def get_normalized_spacer_counts_per_gene(counts_df, gene_perc, count_dict):
     gene_dict = {}
     gene_dict_df = {}
@@ -249,25 +249,6 @@ def get_normalized_spacer_counts_per_gene(counts_df, gene_perc, count_dict):
 
 
 
-def gaussian_smooth_profiles(Y, sigma=2):
-    """
-    Apply Gaussian smoothing to each coverage profile in Y_train.
-
-    Parameters:
-    Y_train (numpy.ndarray): 2D array where each row is a coverage profile.
-    sigma (float): Standard deviation for Gaussian kernel.
-
-    Returns:
-    numpy.ndarray: Smoothed coverage profiles.
-    """
-    # Define a lambda function for applying Gaussian smoothing to a single profile
-    smooth_func = lambda profile: gaussian_filter1d(profile, sigma=sigma)
-
-    # Apply the smoothing function to each row (coverage profile) in Y_train
-    Y_smoothed = Y
-    Y_smoothed[:,2:] = numpy.apply_along_axis(smooth_func, axis=1, arr=Y[:,2:])
-
-    return Y_smoothed
 
 
 

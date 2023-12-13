@@ -26,6 +26,8 @@ required = parser.add_argument_group('required arguments')  # change grouping of
 required.add_argument('-i','--inbamlist',  nargs='+', help='array of bam files with path', required=True)
 required.add_argument('-ge', '--genes', help='genome annotation file path (ECOCYC tsv)', required=True)
 required.add_argument('-cou', '--count_matrix', help='matrix with gene counts per sample', required=True)
+required.add_argument('-bam', '--bamfile_start', help='Pattern at the start of the bam filenames ', required=True)
+
 
 # optional
 optional.add_argument('-o', '--outPath', help='path to output directory.', default='.')
@@ -43,6 +45,7 @@ parser._action_groups.append(optional)
 args = parser.parse_args()
 bamlist = args.inbamlist
 gene_file = str(args.genes)
+bam_file_start = str(args.bamfile_start)
 outdir=str(args.outPath)
 window_size = int(args.winwidth)
 overlap_size = int(args.overlap)
@@ -68,10 +71,11 @@ for col in count_df.columns[5:]:
 count_dict = total_count_per_bam(count_df) # dictionary storing the total spacer counts per bam file
 
 ############ removing bam files with low spacer counts ###########
-bam_directory = bamlist[0].split("BSSE",1)[0]
-bamlist = ['BSSE' + s.split('BSSE', 1)[1] if 'BSSE' in s else s for s in bamlist] 
-bamlist = filter_bamlist(bamlist, count_df, min_counts_per_sample)
+bam_directory = bamlist[0].split(bam_file_start,1)[0]
+bamlist = [bam_file_start + s.split(bam_file_start, 1)[1] if bam_file_start in s else s for s in bamlist] 
 
+
+bamlist = filter_bamlist(bamlist, count_df, min_counts_per_sample)
 # Compute the windows
 windows = get_windows(genome_length,window_size,overlap_size)
 

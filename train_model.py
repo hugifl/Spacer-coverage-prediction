@@ -1,4 +1,4 @@
-from models import CNN_BiLSTM_custom_pooling_dual_input, CNN_BiLSTM_custom_pooling_dual_input_2, CNN_BiLSTM_avg_pooling_16_dual_input
+from models import CNN_BiLSTM_custom_pooling_dual_input_4_3, CNN_BiLSTM_custom_pooling_dual_input_4_2, CNN_BiLSTM_custom_pooling_dual_input_4 ,CNN_BiLSTM_custom_pooling_dual_input, CNN_BiLSTM_custom_pooling_dual_input_2, CNN_BiLSTM_avg_pooling_4_dual_input, CNN_BiLSTM_avg_pooling_4_dual_input_2
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -10,11 +10,11 @@ from tensorflow.keras.callbacks import EarlyStopping
 
 window_size = 3200
 overlap = 1600
-no_bin = 1600
-binsize = 2
-dataset_name = 'window_3200_overlapt_1600_binsize_2_2'
-model_name = 'CNN_BiLSTM_custom_pooling_dual_input_2'
-model = CNN_BiLSTM_custom_pooling_dual_input_2()
+no_bin = 800
+binsize = 4
+dataset_name = 'paraquat_window_3200_overlapt_1600_binsize_4'
+model_name = 'CNN_BiLSTM_custom_pooling_dual_input_4_2'
+model = CNN_BiLSTM_custom_pooling_dual_input_4_2()
 
 learning_rate = 0.0005
 erly_stopping_patience = 10
@@ -33,7 +33,7 @@ Y_test = data['Y_test']
 Y_train = Y_train[:, 2:]
 Y_test = Y_test[:, 2:]
 
-scaling_factor = 0.5
+scaling_factor = 1
 
 Y_test = Y_test * scaling_factor
 Y_train = Y_train * scaling_factor
@@ -51,14 +51,14 @@ X_test_filtered = X_test[~rows_with_nans_or_infs]
 
 
 # Filter out windows that contain genes with coverage peaks too high (normalization error due to wrong/non-matching coordinates) or too low (low gene expression, noisy profile)
-indices_to_remove_train = np.where((Y_train_filtered > 60).any(axis=1) | (Y_train_filtered.max(axis=1) < 2))[0]
+indices_to_remove_train = np.where((Y_train_filtered > 200).any(axis=1) | (Y_train_filtered.max(axis=1) < 5))[0]
 #
 ## Remove these rows from Y_train and X_train
 Y_train_filtered = np.delete(Y_train_filtered, indices_to_remove_train, axis=0)
 X_train_filtered = np.delete(X_train_filtered, indices_to_remove_train, axis=0)
 #
 ## Find indices where the maximum value in a row of Y_test exceeds 20 or is below 2
-indices_to_remove_test = np.where((Y_test_filtered > 60).any(axis=1) | (Y_test_filtered.max(axis=1) < 2))[0]
+indices_to_remove_test = np.where((Y_test_filtered > 200).any(axis=1) | (Y_test_filtered.max(axis=1) < 5))[0]
 #
 ## Remove these rows from Y_test and X_test
 Y_test_filtered = np.delete(Y_test_filtered, indices_to_remove_test, axis=0)
