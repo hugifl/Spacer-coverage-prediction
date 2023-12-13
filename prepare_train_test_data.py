@@ -39,10 +39,10 @@ spacer_counts_df = pd.read_csv(count_file, sep=',', comment="#")
 data = np.load(data_window) 
 X, Y = data['X'], data['Y']
 X = X.astype(np.float32)
-Y_normalized_window, Y_normalized, X_norm =  normalize_coverage_per_gene(Y, X, spacer_counts_df, no_bin, binsize)
+# Y_normalized_window, Y_normalized, X_norm =  normalize_coverage_per_gene(Y, X, spacer_counts_df, no_bin, binsize)
 
 
-X_train, X_test, Y_train, Y_test = custom_train_test_split(X_norm, Y_normalized_window, window_size, overlap_size, 0.05,  random_state=None)
+X_train, X_test, Y_train, Y_test = custom_train_test_split(X, Y, window_size, overlap_size, 0.05,  random_state=None)
 np.savez(outdir + 'train_test_data_normalized_windows_info_.npz', X_train=X_train, X_test=X_test, Y_train=Y_train, Y_test=Y_test)
 
 Y_test_smoothed = gaussian_smooth_profiles(Y_test, sigma=3)

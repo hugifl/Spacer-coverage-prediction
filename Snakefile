@@ -22,6 +22,7 @@ GENE_PERC = int(config['gene_perc'])
 BINSIZE = int(config['binsize'])
 BATCHSIZE = int(config['bam_batchsize'])
 BAMFILE_START = str(config['bamfile_start'])
+READS_PER_EXPERIMENT = str(config['reads_per_experiment'])
 
 INPUTS_ANNOTATION = config['input_directory_annotation']
 INPUTS_READS = config['input_directory_reads']
@@ -52,21 +53,23 @@ rule all:
         os.path.join(DATA_OUTPUTS, 'window_coverage_data_summed.csv'),
         os.path.join(DATA_OUTPUTS,'XY_data_Y_with_windows.npz'), 
         os.path.join(DATA_OUTPUTS,'train_test_data_normalized_windows_info_.npz'), 
-        os.path.join(DATA_OUTPUTS, 'gene_spacer_counts.csv')
+        os.path.join(DATA_OUTPUTS, 'gene_spacer_counts.csv'),
+        os.path.join(DATA_OUTPUTS, 'tot_number_aligned_reads.txt')
         
 rule spacer_coverage_data_prep:
     input:
         BAM_FILES = BAM_FILES
     output:
         os.path.join(DATA_OUTPUTS, 'window_coverage_data_summed.csv'),
-        os.path.join(DATA_OUTPUTS, 'gene_spacer_counts.csv')
+        os.path.join(DATA_OUTPUTS, 'gene_spacer_counts.csv'),
+        os.path.join(DATA_OUTPUTS, 'tot_number_aligned_reads.txt')
 
     run:
         shell('python spacer_coverage_data_prep.py \
                     --inbamlist {BAM_FILES} \
                     --genes {INPUTS_ANNOTATION}{GENES} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
                     --count_matrix {INPUTS_ANNOTATION}{COUNTS} --batchsize {BATCHSIZE} --binsize {BINSIZE} --genomelen {GENOME_LENGTH} \
-                    --overlap {WINDOW_OVERLAP} --mincount {MINCOUNT} --geneperc {GENE_PERC} --bamfile_start {BAMFILE_START}')
+                    --overlap {WINDOW_OVERLAP} --mincount {MINCOUNT} --geneperc {GENE_PERC} --bamfile_start {BAMFILE_START} --readsperexp {READS_PER_EXPERIMENT}')
 
 
 rule sequence_data_prep:

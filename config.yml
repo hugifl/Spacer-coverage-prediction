@@ -11,6 +11,7 @@ gene_perc: '15'           # Percent of lowest expressed genes (spacer count over
 binsize: '4'             # Binsize to bin coverage profiles (should be a power of 2)
 bam_batchsize: '5'       # Size of batches of .bam files to be processed together (depends on memory, decrease batchsize if you process more windows per file)
 bamfile_start: 'S'       # Start of bam file names
+reads_per_experiment: '10000000' # Expected amount of total aligned reads across all samples. Used to keep scale of coverage profiles constant across datasets / experiments 
 ###################### Files ######################
 input_directory_reads: '/cluster/scratch/hugifl/' # Directory with bam files
 input_directory_annotation: '../spacer_coverage_input/'
