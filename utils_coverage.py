@@ -261,7 +261,7 @@ def normalize_coverage_per_gene(coverage_data, gene_spacer_counts_df, no_bin, bi
         window_start = int(row[0]) 
         window_end = int(row[1]) 
         #print("WINDOW: " + str(window_start)+" to " + str(window_end))
-        normalization_factors = numpy.ones(no_bin)
+        normalization_factors = numpy.ones(int(no_bin))
 
         for _, gene in gene_spacer_counts_df.iterrows():
             gene_name = gene['Gene_Name']

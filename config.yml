@@ -1,6 +1,6 @@
 ############################################# DATASET PREPARATION #############################################
 
-dataset_name: 'paraquat_window_3200_overlapt_1600_binsize_4' # Name of the dataset
+dataset_name: 'Paraquat_window_3200_overlap_1600_binsize_4' # Name of the dataset
 
 ###################### Specifications ######################
 window_size: '3200'       # Size of genomic windows that serve as input

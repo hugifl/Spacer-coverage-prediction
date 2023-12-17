@@ -5,8 +5,8 @@ from utils_train_test_data import custom_train_test_split, normalize_coverage_pe
 
 ##################### Dataset information #####################
 # Make sure to only combine datasets with the same window and binsize
-datasets = ['dataset_1', 'dataset_2']
-combined_dataset_name = "name"
+datasets = ['window_3200_overlapt_1600_binsize_4', 'paraquat_window_3200_overlapt_1600_binsize_4']
+combined_dataset_name = "In_vivo_gut_In_vitro_paraquat"
 window_size = 3200
 overlap_size = 1600
 ###############################################################

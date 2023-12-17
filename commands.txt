@@ -33,6 +33,10 @@ plots:
 
 python plot_windows.py --promoters ../spacer_coverage_input/ECOCYC_promoters.txt --terminators ../spacer_coverage_input/ECOCYC_terminators.txt --genes ../spacer_coverage_input/ECOCYC_genes.txt --data_dir /cluster/scratch/hugifl/spacer_coverage_final_data/ --outPath ../spacer_coverage_output/ --winwidth 3200 --binsize 4 --plots 40 --overlap 1600 --data train_test_data_normalized_windows_info_smoothed.npz --dataset_name paraquat_window_3200_overlapt_1600_binsize_4
 
+comparison plots:
+
+python plot_window_multiple_experiments.py --promoters ../spacer_coverage_input/ECOCYC_promoters.txt --terminators ../spacer_coverage_input/ECOCYC_terminators.txt --genes ../spacer_coverage_input/ECOCYC_genes.txt --data_dir /cluster/scratch/hugifl/spacer_coverage_final_data/ --outPath ../spacer_coverage_output/ --winwidth 3200 --binsize 4 --plots 40 --overlap 1600 --data train_test_data_normalized_windows_info_smoothed.npz --dataset_name_1 paraquat_window_3200_overlapt_1600_binsize_4 --dataset_name_2 window_3200_overlapt_1600_binsize_4 --dataset_name_plot_1 In_vitro_Paraquat --dataset_name_plot_2 In_vivo_Gut
+
 sbatch --time=15:00:00 --mem-per-cpu=50G --wrap="snakemake --cores 1"
 
 sbatch --time=24:00:00  --wrap="snakemake --slurm --jobs 100 --default-resources slurm_account=public"

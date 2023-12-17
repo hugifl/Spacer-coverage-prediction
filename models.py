@@ -415,3 +415,4 @@ class CNN_BiLSTM_avg_pooling_4_dual_input_2(Model):
         x = self.batchnorm(x)
         x = self.drop3(x)
         return self.final_conv(x)
+    

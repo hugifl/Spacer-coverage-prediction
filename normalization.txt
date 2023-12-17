@@ -1,0 +1,19 @@
+Preparing spacer coverage profile for one experiment/dataset:
+    
+1) I read in all bam files, get coverage across genome and sum over all bam files. 
+    [I don't normalize the profiles from the individual bamfiles for read number because this would put equal weight on noisy files with less reads as on files with lots of reads]
+
+2) I calculate get the gene expression values by counting the number of aligning spacers and calculate the RPKM value (on a bam file basis, I get it from the count matrix from the pipeline).
+
+3) I normalize the coverage profile across the whole genome by the RPKM gene expression value (average RPKM across all bam files for each gene). For intergenic regions, I normalize by the RPKM value of the closest gene.
+    [I hope that this removes the effect of differential gene expression. The profiles should now be approximately representative of the biological
+    propensity of spacers being acquired from each region within the genome.]
+
+4) I normalize the profiles by the total number of aligned reads in this experiment across all bam files (coverage = coverage * read_number/expected_read_number).
+    [This is to make the scale of the profile comparable across experiments]
+
+Integrating the coverage datasets from multiple experiments:
+
+1) I calculate the total number of ailgned reads across all experiments.
+
+2) I sum up the profiles, weighing the experiments according to their number of reads (coverage = coverage_exp_A * reads_A/tot_reads + ....).

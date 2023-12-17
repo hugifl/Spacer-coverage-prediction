@@ -78,7 +78,7 @@ bam_directory = bamlist[0].split(bam_file_start,1)[0]
 bamlist = [bam_file_start + s.split(bam_file_start, 1)[1] if bam_file_start in s else s for s in bamlist] 
 
 
-#bamlist = filter_bamlist(bamlist, count_df, min_counts_per_sample) # Unnecessary if we just add them up anyways
+bamlist = filter_bamlist(bamlist, count_df, min_counts_per_sample) # Unnecessary if we just add them up anyways
 
 # Compute the windows
 windows = get_windows(genome_length,window_size,overlap_size)
