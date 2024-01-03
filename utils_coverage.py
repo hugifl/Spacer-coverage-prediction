@@ -18,7 +18,8 @@ def get_windows(genome_length,window_size,overlap_size):
             break
     return windows
 
-def filter_bamlist(bamlist, counts_df, mincount):
+def filter_bamlist(bamlist, counts_df, mincount, bamfile_start):
+    counts_df.columns = [bamfile_start + col.split(bamfile_start, 1)[-1] if bamfile_start in col else col for col in counts_df.columns]
     filtered_bamlist = []
     for bam_file in counts_df.columns[6:]:  
         total_count = counts_df[bam_file].sum()
@@ -28,11 +29,12 @@ def filter_bamlist(bamlist, counts_df, mincount):
     print("start of filtered bamlist: " + str(filtered_bamlist[:5]))
     return [bam for bam in bamlist if bam in filtered_bamlist]
 
-def total_count_per_bam(counts_df):
+def total_count_per_bam(counts_df, bamfile_start):
     bam_counts = {}
 
     for bam_file in counts_df.columns[6:]: 
         total_count = counts_df[bam_file].sum()
+        bam_file = bamfile_start + bam_file.split(bamfile_start, 1)[-1] if bamfile_start in bam_file else bam_file
         bam_counts[bam_file] = total_count
 
     return bam_counts
@@ -91,7 +93,7 @@ def bin_coverage(coverage_array, binsize):
 
 
 
-def process_batch(bam_batch, windows, count_dict, binsize, bam_directory):
+def process_batch(bam_batch, windows, reference_genome, binsize, bam_directory):
     # Initialize DataFrame to store batch coverage data
     batch_coverage_list = []
 
@@ -110,7 +112,7 @@ def process_batch(bam_batch, windows, count_dict, binsize, bam_directory):
 
         # Calculate coverage for each window and store it
         for window_start, window_end in windows:
-            window_iv = HTSeq.GenomicInterval("NC_000913.3", window_start, window_end, ".") # U00096.3
+            window_iv = HTSeq.GenomicInterval(reference_genome, window_start, window_end, ".") # U00096.3
             coverage_array = numpy.fromiter(coverage[window_iv], dtype='i', count=window_end - window_start)
             #coverage_array = coverage_array / count_dict[bam_file]  # Normalize by total number of spacers per bam file          CHANGE MAYBE
             coverage_array, num_bins = bin_coverage(coverage_array, binsize)  # Bin the coverage array
@@ -227,7 +229,7 @@ def get_gene_spacer_counts(count_df, gene_df): # no used (?)
 
     return gene_spacer_counts_normalized_df
 
-# The normalization factors (gene expression) are calculated from the count matrix with the forward reads also while the coverage is calculated from only reverse reads.
+# The normalization factors (gene expression) are calculated from the count matrix.
 def get_normalized_spacer_counts_per_gene(counts_df, gene_perc, count_dict):
     gene_dict = {}
     gene_dict_df = {}
@@ -249,6 +251,28 @@ def get_normalized_spacer_counts_per_gene(counts_df, gene_perc, count_dict):
     normalized_gene_spacer_counts_df.reset_index(inplace=True)
     normalized_gene_spacer_counts_df.rename(columns={'index': 'Gene_Name'}, inplace=True)
     return sorted_genes[:number_to_be_dropped], normalized_gene_spacer_counts_df
+
+def get_normalized_spacer_counts_per_TU(counts_df, TU_perc, count_dict):
+    TU_dict = {}
+    TU_dict_df = {}
+    no_bam_files = len(count_dict)
+    for _, row in counts_df.iterrows():
+        spacer_count = 0
+        TU_name = row['Geneid']  
+        TU_start = int(row['Start'])
+        TU_end = int(row['End'])
+        TU_start, TU_end = min(TU_start, TU_end), max(TU_start, TU_end)                                                                           
+        TU_length = float(TU_end - TU_start) + 1
+        for bam_file in counts_df.columns[6:]:
+            spacer_count += (row[bam_file]) / (float(count_dict[bam_file])/1000000) #              changed from per 10000 reads to per 1000000 read 
+        TU_dict[TU_name] = ((spacer_count/(TU_length/1000))/no_bam_files)                   # spacer count in spacers per kilobase (gene length) per 10000 mapped spacers averaged over all samples
+        TU_dict_df[TU_name] = {'start': TU_start, 'end': TU_end, 'spacer_count': ((spacer_count/(TU_length/1000))/no_bam_files)}
+    sorted_TUs = sorted(TU_dict, key=lambda k: TU_dict[k])
+    number_to_be_dropped = int(len(sorted_TUs) * (TU_perc / 100))
+    normalized_TU_spacer_counts_df = pd.DataFrame.from_dict(TU_dict_df, orient='index')
+    normalized_TU_spacer_counts_df.reset_index(inplace=True)
+    normalized_TU_spacer_counts_df.rename(columns={'index': 'TU_Name'}, inplace=True)
+    return sorted_TUs[:number_to_be_dropped], normalized_TU_spacer_counts_df
 
 def normalize_coverage_per_gene(coverage_data, gene_spacer_counts_df, no_bin, binsize): 
     normalized_coverage_data = coverage_data.copy()
@@ -324,6 +348,50 @@ def normalize_coverage_per_gene(coverage_data, gene_spacer_counts_df, no_bin, bi
     #normalized_coverage_data = numpy.delete(normalized_coverage_data, windows_to_delete, axis=0)
     #sequence_data = numpy.delete(sequence_data, windows_to_delete, axis=0)
 
+    return normalized_coverage_data
+
+def normalize_coverage_per_TU(coverage_data, TU_spacer_counts_df, no_bin, binsize):        
+    normalized_coverage_data = coverage_data.copy()
+    #windows_to_delete = [] # If there is some window that isn't covered by any gene, it is deleted.
+    counter = 0
+    nrow = coverage_data.shape[0]
+    for index, row in enumerate(coverage_data):
+        counter += 1
+        #print("perc. done: " + str(100*(counter/nrow)))
+        window_start = int(row[0]) 
+        window_end = int(row[1]) 
+        #print("WINDOW: " + str(window_start)+" to " + str(window_end))
+        normalization_factors = numpy.ones(int(no_bin))
+
+        for _, TU in TU_spacer_counts_df.iterrows():
+            TU_name = TU['TU_Name']
+            TU_start = min(int(TU['start']), int(TU['end']))
+            TU_end = max(int(TU['start']), int(TU['end']))
+
+            # Checking cases where an gene spans the whole window
+            if (TU_start <= window_start) and (TU_end >= window_end): 
+                normalization_factors[:] += float(TU['spacer_count'])
+            
+            # Checking cases where an gene starts before the window and ends within the window
+            if (TU_start <= window_start) and (window_start  <= TU_end <= window_end):
+                end_index = int((TU_end - window_start)/binsize)
+                normalization_factors[:end_index] += float(TU['spacer_count'])
+            
+            # Checking cases where an gene starts and ends within the window
+            if (window_start  <= TU_start <= window_end) and (window_start  <= TU_end <= window_end):
+                start_index = int((TU_start - window_start)/binsize)
+                end_index = int((TU_end - window_start)/binsize)
+                normalization_factors[start_index:end_index] += float(TU['spacer_count'])
+            
+            # Checking cases where an gene starts within the window and ends after the window
+            if (window_start  <= TU_start <= window_end) and (TU_end >= window_end):
+                start_index = int((TU_start - window_start)/binsize)
+                normalization_factors[start_index:] += float(TU['spacer_count'])
+            
+        # Normalizing regions between gene with the count of the closest TU
+        normalization_factors, status = replace_ones(normalization_factors)
+        
+        normalized_coverage_data[index,2:] = (coverage_data[index,2:]) / normalization_factors      # 10000 scaling factor removed
     return normalized_coverage_data
 
 

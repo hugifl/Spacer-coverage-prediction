@@ -12,6 +12,10 @@ required.add_argument('-da1', '--dataset_name_1', help='name of the first datase
 required.add_argument('-dan1', '--dataset_name_plot_1', help='name of the first dataset at use', required=True)
 required.add_argument('-da2', '--dataset_name_2', help='name of the second dataset at use', required=True)
 required.add_argument('-dan2', '--dataset_name_plot_2', help='name of the second dataset at use', required=True)
+required.add_argument('-da3', '--dataset_name_3', help='name of the first dataset at use', required=True)
+required.add_argument('-dan3', '--dataset_name_plot_3', help='name of the first dataset at use', required=True)
+required.add_argument('-da4', '--dataset_name_4', help='name of the second dataset at use', required=True)
+required.add_argument('-dan4', '--dataset_name_plot_4', help='name of the second dataset at use', required=True)
 required.add_argument('-pr', '--promoters', help='genome annotation file path (ECOCYC tsv)', required=True)
 required.add_argument('-te', '--terminators', help='genome annotation file path (ECOCYC tsv)', required=True)
 required.add_argument('-ge', '--genes', help='genome annotation file path (regulonDB tsv)', required=True)
@@ -30,8 +34,12 @@ args = parser.parse_args()
 
 dataset_1 = str(args.dataset_name_1)
 dataset_2 = str(args.dataset_name_2)
+dataset_3 = str(args.dataset_name_3)
+dataset_4 = str(args.dataset_name_4)
 dataset_name_1 = str(args.dataset_name_plot_1)
 dataset_name_2 = str(args.dataset_name_plot_2)
+dataset_name_3 = str(args.dataset_name_plot_3)
+dataset_name_4 = str(args.dataset_name_plot_4)
 promoter_file = str(args.promoters)
 terminator_file = str(args.terminators)
 gene_file = str(args.genes)
@@ -42,8 +50,10 @@ overlap = int(args.overlap)
 plots = int(args.plots)
 binsize = int(args.binsize)
 data_file = str(args.data)
-data_file_1 = data_dir + dataset_1 + "_data"+"/"+ data_file
-data_file_2 = data_dir + dataset_2 + "_data"+"/"+ data_file
+data_file_1 = data_dir + dataset_1 +"/"+ data_file
+data_file_2 = data_dir + dataset_2 +"/"+ data_file
+data_file_3 = data_dir + dataset_3 +"/"+ data_file
+data_file_4 = data_dir + dataset_4 +"/"+ data_file
 no_bin = window_size / binsize
 
 promoter_df = pd.read_csv(promoter_file, sep='\t')
@@ -64,14 +74,28 @@ X_test_1 = data_1['X_test']
 Y_train_1 = data_1['Y_train']
 Y_test_1 = data_1['Y_test']
 
+print("max Y_train_1: ", np.max(Y_train_1[:,2:]))
+
 data_2 = np.load(data_file_2)
 X_train_2 = data_2['X_train']
 X_test_2 = data_2['X_test']
 Y_train_2 = data_2['Y_train']
 Y_test_2 = data_2['Y_test']
 
+data_3 = np.load(data_file_3)
+X_train_3 = data_2['X_train']
+X_test_3 = data_2['X_test']
+Y_train_3 = data_2['Y_train']
+Y_test_3 = data_2['Y_test']
+
+data_4 = np.load(data_file_4)
+X_train_4 = data_4['X_train']
+X_test_4 = data_4['X_test']
+Y_train_4 = data_4['Y_train']
+Y_test_4 = data_4['Y_test']
+
 
 #plots_binarized = plot_window_coverage_binarized(coverage_df_summed, window_size, operon_dataframe, gene_dataframe, plots, no_bin, binsize, outdir, random=False)
 #print(plots_binarized)
-plots_normalized = plot_window_coverage_normalized_compare_profiles(Y_train_1, Y_train_2,dataset_name_1,dataset_name_2,plots, no_bin, outdir, window_size,promoter_df, terminator_df, gene_df, binsize, random=False)
-print(plots_normalized)
+#plots_normalized = plot_window_coverage_normalized_compare_profiles(Y_train_1, Y_train_2, Y_train_3, Y_train_4,dataset_name_1,dataset_name_2,dataset_name_3,dataset_name_4,plots, no_bin, outdir, window_size,promoter_df, terminator_df, gene_df, binsize, random=False)
+#print(plots_normalized)

@@ -1,0 +1,3 @@
+KeyError in line 26 of /cluster/home/hugifl/spacer_coverage_prediction/Snakefile:
+'reference_genome'
+  File "/cluster/home/hugifl/spacer_coverage_prediction/Snakefile", line 26, in <module>

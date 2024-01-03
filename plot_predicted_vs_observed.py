@@ -11,9 +11,9 @@ overlap = 1600
 no_plots = 70
 no_bin = 800
 binsize = 4
-dataset_name = 'paraquat_window_3200_overlapt_1600_binsize_4'
-model_to_load = 'CNN_BiLSTM_custom_pooling_dual_input_4_2'
-model_name = 'CNN_BiLSTM_custom_pooling_dual_input_4_2'
+dataset_name = 'window_3200_overlapt_1600_binsize_4'
+model_to_load = 'model = CNN_BiLSTM_custom_pooling_dual_input_4_1'
+model_name = 'CNN_BiLSTM_custom_pooling_dual_input_4_1'
 
 ###############################################################
 outdir = '../spacer_coverage_output/'
@@ -86,5 +86,5 @@ X_test_seq = X_test_filtered[:, :, :4]  # Sequence data
 X_test_anno = X_test_filtered[:, :, 4:] # Annotation data
 
 
-plots = plot_predicted_vs_observed(loaded_model, model_name, X_test_seq, X_test_anno, Y_test_filtered, no_plots, no_bin, outdir, dataset_name, window_size, promoter_df, terminator_df, gene_df, binsize)
+plots = plot_predicted_vs_observed(loaded_model, model_name, X_test_seq, X_test_anno, Y_test_filtered, no_plots, no_bin, outdir, dataset_name, window_size, promoter_df, terminator_df, gene_df, binsize, log_scale = True)
 print(plots)

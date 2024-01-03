@@ -24,7 +24,7 @@ def one_hot_encode(seq):
             one_hot[i, mapping[nucleotide]] = 1
     return one_hot
 
-def extract_sequences_and_sequence_info(df, genome, window_size, gene_df, promoter_df, terminator_df):
+def extract_sequences_and_sequence_info(df, genome, window_size, gene_df, promoter_df, terminator_df, TU_df):
     print("start building sequence dataset")
     sequences = []
 
@@ -44,18 +44,52 @@ def extract_sequences_and_sequence_info(df, genome, window_size, gene_df, promot
         promoter_vector = numpy.zeros(window_size, dtype=int)
         terminator_vector = numpy.zeros(window_size, dtype=int)
         gene_directionality_vector = numpy.zeros(window_size, dtype=int)
+        TU_forward_start_end = numpy.zeros(window_size, dtype=int)
+        TU_reverse_start_end = numpy.zeros(window_size, dtype=int)
+        TU_forward_body = numpy.zeros(window_size, dtype=int)
+        TU_reverse_body = numpy.zeros(window_size, dtype=int)
+        TU_forward_body_cummul = numpy.zeros(window_size, dtype=int)
+        TU_reverse_body_cummul = numpy.zeros(window_size, dtype=int)
 
+        # Populate TU vectors
+        for _, TU_row in TU_df.iterrows():
+
+            if TU_row['TU_start'] == 'None' or TU_row['TU_end']  == 'None':
+                continue
+            TU_direction = TU_row['Direction']
+            TU_start = int(TU_row['TU_start']) - window_start 
+            TU_end = int(TU_row['TU_end']) - window_start 
+            if 0 <= TU_start < window_size:
+                if TU_direction == '+':
+                    TU_forward_start_end[TU_start] = 1
+                else:
+                    TU_reverse_start_end[TU_start] = 1
+            if 0 <= TU_end < window_size:
+                if TU_direction == '+':
+                    TU_forward_start_end[TU_end] = 1
+                else:
+                    TU_reverse_start_end[TU_end] = 1
+
+            if (0 <= TU_start < window_size) or (0 <= TU_end < window_size) or (TU_start <= 0 and TU_end >= window_size):
+
+                TU_start = max(0, TU_start)
+                TU_end = min(window_size - 1, TU_end)
+
+                if TU_direction == '+':
+                    TU_forward_body[TU_start:TU_end] = 1
+                    TU_forward_body_cummul[TU_start:TU_end] += 1
+                else:
+                    TU_reverse_body[TU_start:TU_end] = 1
+                    TU_reverse_body_cummul[TU_start:TU_end] += 1
+        
+        
+        
         # Populate gene vector
         for _, gene_row in gene_df.iterrows():
 
             if gene_row['Left'] == 'None' or gene_row['Right']  == 'None':
                 continue
-            #print("gene row: ")
-            #print(gene_row)
-            #print("gene row left: ")
-            #print(gene_row['Left'])
-            #print("gene row right: ")
-            #print(gene_row['Right'])
+      
             gene_start = int(gene_row['Left']) - window_start 
             gene_end = int(gene_row['Right']) - window_start 
             if 0 <= gene_start < window_size:
@@ -95,7 +129,7 @@ def extract_sequences_and_sequence_info(df, genome, window_size, gene_df, promot
                 terminator_vector[terminator_start:terminator_end] = 1
 
         # Concatenate all vectors
-        full_vector = numpy.concatenate((encoded_seq, gene_vector[:, None], promoter_vector[:, None], terminator_vector[:, None], gene_directionality_vector[:, None]), axis=1)
+        full_vector = numpy.concatenate((encoded_seq, gene_vector[:, None], promoter_vector[:, None], terminator_vector[:, None], gene_directionality_vector[:, None], TU_forward_start_end[:, None], TU_reverse_start_end[:, None], TU_forward_body[:, None], TU_reverse_body[:, None], TU_forward_body_cummul[:, None], TU_reverse_body_cummul[:, None]), axis=1)
         sequences.append(full_vector)
 
     return numpy.array(sequences)

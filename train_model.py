@@ -88,6 +88,7 @@ optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
 model.compile(optimizer=optimizer, loss = poisson_loss, metrics=[spearman_correlation], run_eagerly=True)  # custom_loss_with_l1 weighted_binary_crossentropy tf.keras.losses.Poisson() 'mean_squared_error' MeanAbsoluteError() MAE_FP_punished_more sparse_binary_crossentropy
 
+#model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'], run_eagerly=True)
 
 
 # Train the model

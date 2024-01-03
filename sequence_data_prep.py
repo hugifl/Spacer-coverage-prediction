@@ -20,6 +20,8 @@ required.add_argument('-te', '--terminators', help='genome annotation file path 
 required.add_argument('-ge', '--genes', help='genome annotation file path (regulonDB tsv)', required=True)
 required.add_argument('-gen', '--genome', help='genome sequence, raw sequence', required=True)
 required.add_argument('-cdf', '--coverage_df', help='coverage dataframe', required = True)
+required.add_argument('-tu', '--TUs', help='genome annotation file path (ECOCYC tsv)', required=True)
+
 # optional
 optional.add_argument('-o', '--outPath', help='path to output directory.', default='.')
 optional.add_argument('-w', '--winwidth', help='sequence length of input sequence, default = 1000', type=int, dest='winwidth', default=2000)
@@ -31,6 +33,7 @@ optional.add_argument('-ov', '--overlap', help='overlap between windows', type=i
 parser._action_groups.append(optional) 
 args = parser.parse_args()
 
+TU_file = str(args.TUs)
 promoter_file = str(args.promoters)
 terminator_file = str(args.terminators)
 gene_file = str(args.genes)
@@ -54,6 +57,8 @@ gene_df = pd.read_csv(gene_file, sep='\t')
 gene_df.drop(gene_df.columns[1], axis=1, inplace=True)
 gene_df.dropna(inplace=True)
 
+TU_df = pd.read_csv(TU_file, sep='\t')
+TU_df.dropna(inplace=True)          ################ continue here 
     
 # Load coverage dataframe (already filtered for low expressed genes and summed over all samples)
 coverage_df_summed = pd.read_csv(coverage_df_file, sep=',', comment="#")
@@ -63,7 +68,7 @@ Y = dataframe_to_2darray_keep_window_information(coverage_df_summed)
 
 # produce input data X (DNA sequence, gene and operon start/end sites, gene direction)
 genome = parse_fasta(genome_file)
-X = extract_sequences_and_sequence_info(coverage_df_summed, genome, window_size, gene_df, promoter_df, terminator_df)
+X = extract_sequences_and_sequence_info(coverage_df_summed, genome, window_size, gene_df, promoter_df, terminator_df, TU_df)
 
 #numpy.savez(outdir+'XY_data_'+str(window_size)+'_'+str(overlap_size)+'.npz', X=X, Y=Y)
 

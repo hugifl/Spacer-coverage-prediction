@@ -12,7 +12,7 @@ import pandas as pd
 import math
 from utils_coverage import filter_bamlist
 from utils_coverage import total_count_per_bam, normalize_coverage_per_gene, normalize_coverage_for_tot_aligned_reads
-from utils_coverage import get_normalized_spacer_counts_per_gene, filter_windows, get_windows, process_batch
+from utils_coverage import get_normalized_spacer_counts_per_gene, filter_windows, get_windows, process_batch, get_normalized_spacer_counts_per_TU, normalize_coverage_per_TU
 
 
 parser = argparse.ArgumentParser()
@@ -25,6 +25,7 @@ required = parser.add_argument_group('required arguments')  # change grouping of
 # required 
 required.add_argument('-i','--inbamlist',  nargs='+', help='array of bam files with path', required=True)
 required.add_argument('-ge', '--genes', help='genome annotation file path (ECOCYC tsv)', required=True)
+required.add_argument('-tu', '--TUs', help='genome annotation file path (ECOCYC tsv)', required=True)
 required.add_argument('-cou', '--count_matrix', help='matrix with gene counts per sample', required=True)
 required.add_argument('-bam', '--bamfile_start', help='Pattern at the start of the bam filenames ', required=True)
 
@@ -39,6 +40,8 @@ optional.add_argument('-gp', '--geneperc', help='percent genes with lowest expre
 optional.add_argument('-bs', '--binsize', help='binsize to average coverage, power of 2', type=int, default=16)
 optional.add_argument('-bas', '--batchsize', help='batchsize of bamfiles to process', type=int, default=10)
 optional.add_argument('-exp', '--readsperexp', help='expected number of aligned reads per experiment (across all samples)', type=int, default=10000000)
+optional.add_argument('-no', '--normalization_unit', help='normalization unit', type=str, default='gene')
+optional.add_argument('-ref', '--reference_genome', help='reference genome name', type=str, default='gene')
 
 #initialize values
 
@@ -46,6 +49,7 @@ parser._action_groups.append(optional)
 args = parser.parse_args()
 bamlist = args.inbamlist
 gene_file = str(args.genes)
+TU_file = str(args.TUs)
 bam_file_start = str(args.bamfile_start)
 outdir=str(args.outPath)
 window_size = int(args.winwidth)
@@ -58,11 +62,16 @@ binsize = int(args.binsize)
 batch_size = int(args.batchsize)
 expected_aligned_reads_per_experiment = int(args.readsperexp)
 no_bin = window_size/binsize
+normalization_unit = str(args.normalization_unit)
+reference_genome = str(args.reference_genome)
 ############ loading operon and gene information data ############
 
 gene_df = pd.read_csv(gene_file, sep='\t')
 gene_df.drop(gene_df.columns[1], axis=1, inplace=True)
 gene_df.dropna(inplace=True)
+
+TU_df = pd.read_csv(TU_file, sep='\t')
+TU_df.dropna(inplace=True)
 
 
 count_df = pd.read_csv(count_matrix, sep='\t', dtype=str, low_memory=False)
@@ -70,16 +79,16 @@ count_df = pd.read_csv(count_matrix, sep='\t', dtype=str, low_memory=False)
 for col in count_df.columns[5:]:
     count_df[col] = pd.to_numeric(count_df[col], errors='coerce')
     
-
-count_dict = total_count_per_bam(count_df) # dictionary storing the total spacer counts per bam file
-
+count_dict = total_count_per_bam(count_df, bam_file_start) # dictionary storing the total spacer counts per bam file
+print("example key-value pair of count_dict: " + str(list(count_dict.items())[0]))
 ############ removing bam files with low spacer counts ###########
 bam_directory = bamlist[0].split(bam_file_start,1)[0]
 bamlist = [bam_file_start + s.split(bam_file_start, 1)[1] if bam_file_start in s else s for s in bamlist] 
+print(len(bamlist))
 
-
-bamlist = filter_bamlist(bamlist, count_df, min_counts_per_sample) # Unnecessary if we just add them up anyways
-
+bamlist = filter_bamlist(bamlist, count_df, min_counts_per_sample, bam_file_start) # Unnecessary if we just add them up anyways
+print(len(bamlist))
+print("example bam file name: " + str(bamlist[0]))
 # Compute the windows
 windows = get_windows(genome_length,window_size,overlap_size)
 
@@ -89,7 +98,7 @@ for i in range(0, len(bamlist), batch_size):
     batch += 1
     print("batch " + str(batch) + " out of "+ str(len(bamlist)/batch_size))
     bam_batch = bamlist[i:i + batch_size]
-    batch_coverage_df, aligned_read_count_batch = process_batch(bam_batch, windows, count_dict, binsize, bam_directory)
+    batch_coverage_df, aligned_read_count_batch = process_batch(bam_batch, windows, reference_genome, binsize, bam_directory)
     total_aligned_reads += aligned_read_count_batch
     batch_coverage_summed = batch_coverage_df.groupby(['Window_Start', 'Window_End']).sum().reset_index()
     
@@ -99,10 +108,17 @@ for i in range(0, len(bamlist), batch_size):
         # Sum the batch coverage with the total coverage
         coverage_df_summed = pd.concat([coverage_df_summed, batch_coverage_summed]).groupby(['Window_Start', 'Window_End']).sum().reset_index()
 
-# Normalize coverage for gene expression (RPKM) values per gene to remove effects of differential gene expression.
-low_expressed_genes, gene_spacer_counts_normalized_df = get_normalized_spacer_counts_per_gene(count_df, gene_perc, count_dict)       
-coverage_array_summed = coverage_df_summed.to_numpy()
-coverage_array_gene_normalized = normalize_coverage_per_gene(coverage_array_summed, gene_spacer_counts_normalized_df, no_bin, binsize)
+if normalization_unit == 'gene':
+    # Normalize coverage for gene expression (RPKM) values per gene to remove effects of differential gene expression.
+    low_expressed_genes, gene_spacer_counts_normalized_df = get_normalized_spacer_counts_per_gene(count_df, gene_perc, count_dict)       
+    coverage_array_summed = coverage_df_summed.to_numpy()
+    coverage_array_gene_normalized = normalize_coverage_per_gene(coverage_array_summed, gene_spacer_counts_normalized_df, no_bin, binsize)
+
+if normalization_unit == 'TU':
+    # Normalize coverage for gene expression (RPKM) values per gene to remove effects of differential gene expression.
+    low_expressed_genes, TU_spacer_counts_normalized_df = get_normalized_spacer_counts_per_TU(count_df, gene_perc, count_dict)       
+    coverage_array_summed = coverage_df_summed.to_numpy()
+    coverage_array_gene_normalized = normalize_coverage_per_TU(coverage_array_summed, TU_spacer_counts_normalized_df, no_bin, binsize)
 
 # Normalize coverage for total aligned reads to make scale comparable across experiments
 coverage_array_gene_and_library_size_normalized = normalize_coverage_for_tot_aligned_reads(coverage_array_gene_normalized, total_aligned_reads, expected_aligned_reads_per_experiment)

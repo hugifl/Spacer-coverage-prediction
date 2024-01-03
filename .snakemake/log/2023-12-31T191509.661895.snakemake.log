@@ -1,0 +1,40 @@
+Building DAG of jobs...
+Using shell: /cluster/apps/sfos/bin/bash
+Provided cores: 1
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	all
+	1	prepare_train_test_data
+	1	sequence_data_prep
+	3
+
+[Sun Dec 31 19:15:10 2023]
+rule sequence_data_prep:
+    input: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data/window_coverage_data_summed.csv
+    output: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data/XY_data_Y_with_windows.npz
+    jobid: 2
+
+[Sun Dec 31 19:59:33 2023]
+Finished job 2.
+1 of 3 steps (33%) done
+
+[Sun Dec 31 19:59:33 2023]
+rule prepare_train_test_data:
+    input: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data/XY_data_Y_with_windows.npz
+    output: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data/train_test_data_normalized_windows_info_.npz
+    jobid: 3
+
+[Sun Dec 31 19:59:43 2023]
+Finished job 3.
+2 of 3 steps (67%) done
+
+[Sun Dec 31 19:59:43 2023]
+localrule all:
+    input: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data/window_coverage_data_summed.csv, /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data/XY_data_Y_with_windows.npz, /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data/train_test_data_normalized_windows_info_.npz, /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data/gene_spacer_counts.csv, /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data/tot_number_aligned_reads.txt
+    jobid: 0
+
+[Sun Dec 31 19:59:43 2023]
+Finished job 0.
+3 of 3 steps (100%) done
+Complete log: /cluster/home/hugifl/spacer_coverage_prediction/.snakemake/log/2023-12-31T191509.661895.snakemake.log

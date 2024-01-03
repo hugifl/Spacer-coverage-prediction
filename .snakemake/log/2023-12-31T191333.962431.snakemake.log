@@ -1,0 +1,20 @@
+Building DAG of jobs...
+Using shell: /cluster/apps/sfos/bin/bash
+Provided cores: 1
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	all
+	1	prepare_train_test_data
+	1	sequence_data_prep
+	3
+
+[Sun Dec 31 19:13:34 2023]
+rule sequence_data_prep:
+    input: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data/window_coverage_data_summed.csv
+    output: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data/XY_data_Y_with_windows.npz
+    jobid: 2
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: /cluster/home/hugifl/spacer_coverage_prediction/.snakemake/log/2023-12-31T191333.962431.snakemake.log

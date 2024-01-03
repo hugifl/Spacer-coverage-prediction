@@ -13,7 +13,6 @@ import csv
 configfile: "config.yml"
 
 DATASET = str(config['dataset_name'])
-
 WINDOW_SIZE = int(config['window_size'])
 WINDOW_OVERLAP = int(config['window_overlap'])
 GENOME_LENGTH = int(config['genome_length'])
@@ -23,12 +22,15 @@ BINSIZE = int(config['binsize'])
 BATCHSIZE = int(config['bam_batchsize'])
 BAMFILE_START = str(config['bamfile_start'])
 READS_PER_EXPERIMENT = str(config['reads_per_experiment'])
+NORMALIZATION_UNIT = str(config['normalization_unit'])
+REFERENCE_GENOME = str(config['reference_genome'])
 
 INPUTS_ANNOTATION = config['input_directory_annotation']
 INPUTS_READS = config['input_directory_reads']
 OUTDIR = config['output_directory']
 DATA_OUTDIR = config['data_output_directory']
 
+TUs = config['TU_file']
 GENES = config['gene_file']
 PROMOTERS = config['promoter_file']
 TERMINATORS = config['terminator_file']
@@ -67,9 +69,10 @@ rule spacer_coverage_data_prep:
     run:
         shell('python spacer_coverage_data_prep.py \
                     --inbamlist {BAM_FILES} \
-                    --genes {INPUTS_ANNOTATION}{GENES} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
+                    --genes {INPUTS_ANNOTATION}{GENES} --TUs {INPUTS_ANNOTATION}{TUs} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
                     --count_matrix {INPUTS_ANNOTATION}{COUNTS} --batchsize {BATCHSIZE} --binsize {BINSIZE} --genomelen {GENOME_LENGTH} \
-                    --overlap {WINDOW_OVERLAP} --mincount {MINCOUNT} --geneperc {GENE_PERC} --bamfile_start {BAMFILE_START} --readsperexp {READS_PER_EXPERIMENT}')
+                    --overlap {WINDOW_OVERLAP} --mincount {MINCOUNT} --geneperc {GENE_PERC} --bamfile_start {BAMFILE_START} --readsperexp {READS_PER_EXPERIMENT} \
+                    --normalization_unit {NORMALIZATION_UNIT} --reference_genome {REFERENCE_GENOME}')
 
 
 rule sequence_data_prep:
@@ -81,7 +84,7 @@ rule sequence_data_prep:
     run:
         shell('python sequence_data_prep.py \
                     --promoters {INPUTS_ANNOTATION}{PROMOTERS} --terminators {INPUTS_ANNOTATION}{TERMINATORS} \
-                    --genes {INPUTS_ANNOTATION}{GENES} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
+                    --genes {INPUTS_ANNOTATION}{GENES} --TUs {INPUTS_ANNOTATION}{TUs} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
                     --genomelen {GENOME_LENGTH} --genome {INPUTS_ANNOTATION}{GENOME} \
                     --overlap {WINDOW_OVERLAP} --coverage_df {input}')
 
