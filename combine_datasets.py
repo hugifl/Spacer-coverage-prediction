@@ -5,13 +5,13 @@ from utils_train_test_data import custom_train_test_split, normalize_coverage_pe
 
 ##################### Dataset information #####################
 # Make sure to only combine datasets with the same window and binsize
-datasets = ['Diet1_window_3200_overlap_1600_no_binning_gene_normalized', 'Diet2_window_3200_overlap_1600_no_binning_gene_normalized', 'Paraquat_window_3200_overlap_1600_no_binning_gene_normalized']
-combined_dataset_name = "In_vivo_diet1_2_In_vitro_paraquat"
+datasets = ['Btheta_3200_1600_gene_norm', 'Diet1_3200_1600_gene_norm', 'Diet2_3200_1600_gene_norm','Paraquat_3200_1600_gene_norm']
+combined_dataset_name = "3200_1600_gene_norm"
 window_size = 3200
 overlap_size = 1600
 ###############################################################
 
-data_dir = '/cluster/scratch/hugifl/spacer_coverage_final_data/'
+data_dir = '/cluster/scratch/hugifl/spacer_coverage_final_data_2/'
 outdir = data_dir  + combined_dataset_name + "_data/"
 
 if not os.path.exists(outdir):
@@ -41,6 +41,22 @@ for index, dataset_name in enumerate(datasets):
     X = data['X']
     X = X.astype(np.float32)
     Y = data['Y']
+
+    # Count the total number of elements
+    total_elements = Y.size
+
+    # Check for NaN values and count them
+    nan_count = np.sum(np.isnan(Y))
+
+    # Check for Inf values and count them
+    inf_count = np.sum(np.isinf(Y))
+
+    # Calculate the total count of NaN or Inf values
+    total_nan_inf = nan_count + inf_count
+
+    # Calculate the ratio of NaN or Inf values
+    ratio_nan_inf = total_nan_inf / total_elements
+    print(f"Ratio of NaN or Inf values in dataset {dataset_name}: {ratio_nan_inf:.4f}")
     
     
     # Calculate weight for this dataset
@@ -48,10 +64,9 @@ for index, dataset_name in enumerate(datasets):
     
     # Weight the coverage data
     weighted_coverage = Y[:, 2:] * weight
-    print("Dimensions of weighted coverage: ", weighted_coverage.shape)
-    print("Dimensions of Y: ", Y.shape)
-    print("max Y: ", np.max(Y[:,2:]))
-    print("max weighted_coverage: ", np.max(weighted_coverage))
+    #print("example coverage: ", Y[500,1000:1050])
+    #print("max Y: ", np.max(Y[:,2:]))
+    #print("max weighted_coverage: ", np.max(weighted_coverage))
     # Add to combined coverage
     if combined_coverage is None:
         combined_coverage = np.zeros_like(weighted_coverage)
@@ -60,7 +75,26 @@ for index, dataset_name in enumerate(datasets):
 # Combined coverage now contains the summed coverage, weighted by library size
 # The window information (first two columns) can be added back if necessary
 final_Y = np.hstack((Y[:, :2], combined_coverage))
-print("Dimensions of final Y: ", final_Y.shape)
+
+print("Original shape of X: ", X.shape)
+print("Original shape of final_Y: ", final_Y.shape)
+
+# Create a mask for rows with NaN or Inf values in final_Y
+invalid_rows_mask = np.any(np.isnan(final_Y) | np.isinf(final_Y), axis=1)
+
+# Count the number of rows to be removed
+rows_to_remove = np.sum(invalid_rows_mask)
+print(f"Number of rows to remove: {rows_to_remove}")
+
+# Remove the rows from X and final_Y
+X = X[~invalid_rows_mask, :]
+final_Y = final_Y[~invalid_rows_mask, :]
+
+# Print the new shapes of X and final_Y
+print("New shape of X after removing invalid rows: ", X.shape)
+print("New shape of final_Y after removing invalid rows: ", final_Y.shape)
+
+
 print("Saving combined dataset...")
 final_Y_smoothed = gaussian_smooth_profiles(final_Y, sigma=3)
 np.savez(outdir+'XY_data_Y_with_windows_smoothed.npz', X=X, Y=final_Y_smoothed)

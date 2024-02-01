@@ -1,0 +1,13 @@
+number of bam files in paraquat in count df:  130
+number of bam files in diet 2 in count df:  270
+number of bam files in paraquat in count dict:  130
+number of bam files in diet 2 in count dict:  270
+Traceback (most recent call last):
+  File "coverage_data_prep_test.py", line 24, in <module>
+    print("average number of spacers per bam file in paraquat: ", numpy.mean(list(count_dict_para.values())))
+  File "<__array_function__ internals>", line 6, in mean
+  File "/cluster/home/hugifl/.local/lib/python3.7/site-packages/numpy/core/fromnumeric.py", line 3441, in mean
+    out=out, **kwargs)
+  File "/cluster/home/hugifl/.local/lib/python3.7/site-packages/numpy/core/_methods.py", line 179, in _mean
+    ret = umr_sum(arr, axis, dtype, out, keepdims, where=where)
+TypeError: cannot perform reduce with flexible type

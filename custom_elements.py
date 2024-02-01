@@ -3,6 +3,11 @@ from tensorflow.keras.layers import Layer
 from tensorflow.keras import backend as K
 import scipy
 import numpy
+from scipy.stats import pearsonr
+import matplotlib.pyplot as plt
+from scipy.signal import find_peaks
+import pandas as pd
+
 # Pooling layer that applies max pooling on all channels and max pooling of the absolute values on the last channel (contains -1/1 values)
 class CustomPooling(tf.keras.layers.Layer):
     def __init__(self, pool_size, strides, padding='SAME', **kwargs):
@@ -95,3 +100,91 @@ class NaNChecker(tf.keras.callbacks.Callback):
 
 def spearman_correlation(y_true, y_pred):
     return tf.py_function(lambda a, b: scipy.stats.spearmanr(a, b).correlation, [y_true, y_pred], tf.double)
+
+def calculate_peak_f1_score(observed_peaks, predicted_peaks, observed_properties, predicted_properties, overlap_threshold=0.02, data_length=None):
+    
+    def check_overlap(peak1_index, properties1, peak2_index, properties2, data_length):
+        """ Check if two peaks overlap by at least the overlap_threshold. """
+        start1 = int(round(properties1['left_ips'][peak1_index]))
+        end1 = int(round(properties1['right_ips'][peak1_index]))
+        start2 = int(round(properties2['left_ips'][peak2_index]))
+        end2 = int(round(properties2['right_ips'][peak2_index]))
+
+        # Ensure the indices are within the valid range
+        start1, end1, start2, end2 = max(0, start1), min(end1, data_length), max(0, start2), min(end2, data_length)
+
+        # Calculate the overlap
+        overlap = max(0, min(end1, end2) - max(start1, start2))
+    
+        return overlap / max(end1 - start1, end2 - start2) >= overlap_threshold
+    
+    # Counters for TP, FP, and FN
+    tp = fp = fn = 0
+
+    # Check each predicted peak for TP or FP
+    for i, predicted_peak in enumerate(predicted_peaks):
+        if any(check_overlap(i, predicted_properties, j, observed_properties, data_length) for j, observed_peak in enumerate(observed_peaks)):
+            tp += 1
+        else:
+            fp += 1
+
+    # Check each observed peak for FN
+    for j, observed_peak in enumerate(observed_peaks):
+        if not any(check_overlap(j, observed_properties, i, predicted_properties, data_length) for i, predicted_peak in enumerate(predicted_peaks)):
+            fn += 1
+
+    # Calculate Precision, Recall, and F1 score
+    precision = tp / (tp + fp) if tp + fp > 0 else 0
+    recall = tp / (tp + fn) if tp + fn > 0 else 0
+    f1_score = 2 * (precision * recall) / (precision + recall) if precision + recall > 0 else 0
+
+    return f1_score
+
+def calculate_pearson_correlation(observed, predicted, use_log=True, plot=True, plot_filename=None):
+    if use_log:
+        # Apply log2 transformation, adding a small constant to avoid log(0)
+        observed_transformed = numpy.log2(observed + 1e-9)
+        predicted_transformed = numpy.log2(predicted + 1e-9)
+    else:
+        observed_transformed = observed
+        predicted_transformed = predicted
+
+    correlation, _ = pearsonr(observed_transformed, predicted_transformed)
+
+    if plot:
+        plt.figure(figsize=(8, 6))
+        plt.scatter(observed_transformed, predicted_transformed, alpha=0.6)
+        plt.xlabel("Observed Values" + (" (log2)" if use_log else ""))
+        plt.ylabel("Predicted Values" + (" (log2)" if use_log else ""))
+        plt.title("Observed vs Predicted Coverage")
+        plt.grid(True)
+        plt.savefig(plot_filename)
+        plt.show()
+    return correlation
+
+def find_and_plot_peaks(data, filename, height=None, distance=None, prominence=None, width=None):
+    
+    # Identifying peaks
+    peaks, properties = find_peaks(data, height=height, distance=distance, prominence=prominence, width=width)
+
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.plot(data, label='Coverage Profile')
+    plt.plot(peaks, data[peaks], "x", color='red', label='Peaks')
+    # Marking the prominence of each peak
+    plt.vlines(x=peaks, ymin=data[peaks] - properties["prominences"],
+               ymax=data[peaks], color="C1")
+
+    # Marking the width of each peak
+    if 'width_heights' in properties and 'left_ips' in properties and 'right_ips' in properties:
+        plt.hlines(y=properties["width_heights"], xmin=properties["left_ips"],
+                   xmax=properties["right_ips"], color="C1")
+
+    plt.xlabel('Position')
+    plt.ylabel('Coverage')
+    plt.title('Coverage Profile with Identified Peaks')
+    plt.legend()
+    plt.savefig(filename)
+    plt.show()
+
+    return peaks

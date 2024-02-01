@@ -1,6 +1,6 @@
 ############################################# DATASET PREPARATION #############################################
 
-dataset_name: 'Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data' # Name of the dataset
+dataset_name: 'Diet1_3200_1600_gene_norm' # Name of the dataset
 
 ###################### Specifications ######################
 window_size: '3200'       # Size of genomic windows that serve as input
@@ -9,7 +9,7 @@ genome_length: '4641652'
 mincount: '10000'         # Minimal amount of spacers per bamfile. Lower get filtered out.
 gene_perc: '15'           # Percent of lowest expressed genes or TUs (spacer count over all bam files) to get filtered out. windows that contain those genes get filtered out
 binsize: '1'             # Binsize to bin coverage profiles (should be a power of 2)
-bam_batchsize: '1'   #set to 5    # Size of batches of .bam files to be processed together (depends on memory, decrease batchsize if you process more windows per file)
+bam_batchsize: '5'   #set to 5    # Size of batches of .bam files to be processed together (depends on memory, decrease batchsize if you process more windows per file)
 bamfile_start: 'BSSE'       # Start of bam file names
 reads_per_experiment: '10000000' # Expected amount of total aligned reads across all samples. Used to keep scale of coverage profiles constant across datasets / experiments 
 normalization_unit: 'gene' # gene or TU (transcription unit)
@@ -18,12 +18,12 @@ reference_genome: 'U00096.3' # Reference genome name
 input_directory_reads: '/cluster/scratch/hugifl/' # Directory with bam files
 input_directory_annotation: '../spacer_coverage_input/'
 output_directory: '/cluster/home/hugifl/spacer_coverage_output/' 
-data_output_directory: '/cluster/scratch/hugifl/spacer_coverage_final_data/'
+data_output_directory: '/cluster/scratch/hugifl/spacer_coverage_final_data_2/'
 
 TU_file: 'TU_start_end_added_promoters_updated.tsv' # File with TU start and end sites
 gene_file: 'ECOCYC_genes.txt'   # File from ECOCYC with gene start and end sites and further info
 promoter_file: 'ECOCYC_promoters.txt'     # File from ECOCYC with promoter absolute + 1 positions
 terminator_file: 'ECOCYC_terminators.txt'     # File from ECOCYC with terminator start and end sites
 genome_fasta: 'U00096.3.fasta'  # Genome sequence in .fasta format
-count_matrix: 'genomeCounts_diet1.txt' # Matrix with spacer counts per gene per fasta file for normalization purposes
-bam_files: '/cluster/scratch/hugifl/gut_diet1_run_1/outputs/alignments/genomeBams'  # Spacer alignment .bam files
+count_matrix: 'genomeCounts_diet1_new.txt' # Matrix with spacer counts per gene per fasta file for normalization purposes
+bam_files: '/cluster/scratch/hugifl/gut_diet1_run_2/outputs/alignments/genomeBams'  # Spacer alignment .bam files

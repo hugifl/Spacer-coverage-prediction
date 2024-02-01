@@ -10,10 +10,10 @@ from scipy.interpolate import interp1d
 import csv
 import pandas as pd
 import math
-from utils_coverage import filter_bamlist
+from utils_coverage import filter_bamlist, expand_count_df
 from utils_coverage import total_count_per_bam, normalize_coverage_per_gene, normalize_coverage_for_tot_aligned_reads
 from utils_coverage import get_normalized_spacer_counts_per_gene, filter_windows, get_windows, process_batch, get_normalized_spacer_counts_per_TU, normalize_coverage_per_TU
-
+import os
 
 parser = argparse.ArgumentParser()
 
@@ -86,27 +86,63 @@ bam_directory = bamlist[0].split(bam_file_start,1)[0]
 bamlist = [bam_file_start + s.split(bam_file_start, 1)[1] if bam_file_start in s else s for s in bamlist] 
 print(len(bamlist))
 
-bamlist = filter_bamlist(bamlist, count_df, min_counts_per_sample, bam_file_start) # Unnecessary if we just add them up anyways
+bamlist, count_df = filter_bamlist(bamlist, count_df, min_counts_per_sample, bam_file_start) 
 print(len(bamlist))
 print("example bam file name: " + str(bamlist[0]))
+
+count_dict = {k: count_dict[k] for k in bamlist if k in count_dict}
+
+if len(count_dict) == 0:
+    raise RuntimeError("The dictionary is empty.")
 # Compute the windows
 windows = get_windows(genome_length,window_size,overlap_size)
 
-batch = 0
-total_aligned_reads = 0
-for i in range(0, len(bamlist), batch_size):
-    batch += 1
-    print("batch " + str(batch) + " out of "+ str(len(bamlist)/batch_size))
-    bam_batch = bamlist[i:i + batch_size]
-    batch_coverage_df, aligned_read_count_batch = process_batch(bam_batch, windows, reference_genome, binsize, bam_directory)
-    total_aligned_reads += aligned_read_count_batch
-    batch_coverage_summed = batch_coverage_df.groupby(['Window_Start', 'Window_End']).sum().reset_index()
-    
-    if batch == 1:
-        coverage_df_summed = batch_coverage_summed
-    else:
-        # Sum the batch coverage with the total coverage
-        coverage_df_summed = pd.concat([coverage_df_summed, batch_coverage_summed]).groupby(['Window_Start', 'Window_End']).sum().reset_index()
+# Assuming the DataFrame is stored as a CSV file in the 'out' directory
+coverage_df_path = outdir+'coverage_df_summed.csv'
+
+# Check if the file exists
+if os.path.exists(coverage_df_path):
+    # If the file exists, load the DataFrame
+    coverage_df_summed = pd.read_csv(coverage_df_path)
+    total_aligned_reads_file = outdir + 'total_aligned_reads.txt'
+    with open(total_aligned_reads_file, "r") as file:
+        total_aligned_reads = int(file.read())
+else:
+    batch = 0
+    total_aligned_reads = 0
+    total_window_aligned_reads = 0
+    total_reads = 0
+    for i in range(0, len(bamlist), batch_size):
+        batch += 1
+        print("batch " + str(batch) + " out of "+ str(len(bamlist)/batch_size))
+        bam_batch = bamlist[i:i + batch_size]
+        batch_coverage_df, aligned_read_count_batch, window_aligned_read_count_batch, total_read_count_batch = process_batch(bam_batch, windows, reference_genome, binsize, bam_directory)
+        total_aligned_reads += aligned_read_count_batch
+        total_window_aligned_reads += window_aligned_read_count_batch
+        total_reads += total_read_count_batch
+        batch_coverage_summed = batch_coverage_df.groupby(['Window_Start', 'Window_End']).sum().reset_index()
+
+        if batch == 1:
+            coverage_df_summed = batch_coverage_summed
+        else:
+            # Sum the batch coverage with the total coverage
+            coverage_df_summed = pd.concat([coverage_df_summed, batch_coverage_summed]).groupby(['Window_Start', 'Window_End']).sum().reset_index()
+        coverage_df_summed.to_csv(coverage_df_path, index=False)
+
+    count_stats_file = outdir + 'count_stats.txt'
+    total_aligned_reads_file = outdir + 'total_aligned_reads.txt'
+    with open(count_stats_file, 'w') as file:
+        # Write descriptive text and the integer value
+        file.write('Total reads: ' + str(total_reads) + '\n')
+        file.write('Total aligned reads: ' + str(total_aligned_reads) + '\n')
+        file.write('Total reads aligned to windows: ' + str(total_window_aligned_reads) + '\n')
+    with open(total_aligned_reads_file, "w") as file:
+        file.write(str(total_aligned_reads))
+
+
+# Sometimes genes that are on insertion elements will have multiple start and end sites in the count matrix.
+count_df = expand_count_df(count_df)
+
 
 if normalization_unit == 'gene':
     # Normalize coverage for gene expression (RPKM) values per gene to remove effects of differential gene expression.

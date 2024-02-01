@@ -46,5 +46,4 @@ np.savez(outdir + 'train_test_data_normalized_windows_info_.npz', X_train=X_trai
 Y_test_smoothed = gaussian_smooth_profiles(Y_test, sigma=3)
 Y_train_smoothed = gaussian_smooth_profiles(Y_train, sigma=3)
 
-np.savez(outdir + 'train_test_data_normalized_windows_info.npz', X_train=X_train, X_test=X_test, Y_train=Y_train, Y_test=Y_test)
 np.savez(outdir + 'train_test_data_normalized_windows_info_smoothed.npz', X_train=X_train, X_test=X_test, Y_train=Y_train_smoothed, Y_test=Y_test_smoothed)

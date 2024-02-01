@@ -342,14 +342,14 @@ def plot_window_coverage_normalized_compare_profiles(normalized_coverage_with_wi
             gene_start, gene_end = min(gene_start, gene_end), max(gene_start, gene_end)
 
             if 0 <= gene_start < window_size:
-                print("start of: " + gene_row['Gene_Name']+ "is in this window")
-                print("gene starts at:" + str(gene_row['Left']))
-                print("gene ends at:" + str(gene_row['Right']))
+                #print("start of: " + gene_row['Gene_Name']+ "is in this window")
+                #print("gene starts at:" + str(gene_row['Left']))
+                #print("gene ends at:" + str(gene_row['Right']))
                 gene_starts.append(int(gene_start/binsize))
             if 0 <= gene_end < window_size:
-                print("end of: " + gene_row['Gene_Name'] + "is in this window")
-                print("gene starts at:" + str(gene_row['Left']))
-                print("gene ends at:" + str(gene_row['Right']))
+                #print("end of: " + gene_row['Gene_Name'] + "is in this window")
+                #print("gene starts at:" + str(gene_row['Left']))
+                #print("gene ends at:" + str(gene_row['Right']))
                 gene_ends.append(int(gene_end/binsize))
         
         for _, promoter_row in promoter_df.iterrows():

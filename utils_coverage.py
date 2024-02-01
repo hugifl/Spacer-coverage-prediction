@@ -18,7 +18,7 @@ def get_windows(genome_length,window_size,overlap_size):
             break
     return windows
 
-def filter_bamlist(bamlist, counts_df, mincount, bamfile_start):
+def filter_bamlist_old(bamlist, counts_df, mincount, bamfile_start):
     counts_df.columns = [bamfile_start + col.split(bamfile_start, 1)[-1] if bamfile_start in col else col for col in counts_df.columns]
     filtered_bamlist = []
     for bam_file in counts_df.columns[6:]:  
@@ -28,6 +28,45 @@ def filter_bamlist(bamlist, counts_df, mincount, bamfile_start):
     print("start of bamlist: " + str(bamlist[:5]))
     print("start of filtered bamlist: " + str(filtered_bamlist[:5]))
     return [bam for bam in bamlist if bam in filtered_bamlist]
+
+def filter_bamlist(bamlist, counts_df, mincount, bamfile_start):
+    # Update column names in counts_df
+    counts_df.columns = [
+        bamfile_start + col.split(bamfile_start, 1)[-1] if bamfile_start in col else col
+        for col in counts_df.columns
+    ]
+
+    # Initialize an empty list for filtered BAM files
+    filtered_bamlist = []
+
+    # Iterate over the columns of counts_df starting from the 7th column
+    for bam_file in counts_df.columns[6:]:
+        total_count = counts_df[bam_file].sum()
+        if total_count >= mincount:
+            filtered_bamlist.append(bam_file)
+        else:
+            # Delete the column if total_count is less than mincount
+            counts_df.drop(bam_file, axis=1, inplace=True)
+
+    # Print the first few elements of bamlist and filtered_bamlist for debugging
+    print("Start of bamlist: " + str(bamlist[:5]))
+    print("Start of filtered bamlist: " + str(filtered_bamlist[:5]))
+
+    # Filter the bamlist to include only those BAM files that are in filtered_bamlist
+    filtered_bamlist_final = [bam for bam in bamlist if bam in filtered_bamlist]
+
+    # Return the filtered list and the updated counts_df
+    return filtered_bamlist_final, counts_df
+
+def filter_bamlist_2(count_dict, threshold):
+    # Convert dict_keys object to a list for modification
+    filtered_bamlist = list(count_dict.keys())
+
+    for key, value in count_dict.items():
+        if value < threshold:
+            filtered_bamlist.remove(key)
+
+    return filtered_bamlist
 
 def total_count_per_bam(counts_df, bamfile_start):
     bam_counts = {}
@@ -96,23 +135,35 @@ def bin_coverage(coverage_array, binsize):
 def process_batch(bam_batch, windows, reference_genome, binsize, bam_directory):
     # Initialize DataFrame to store batch coverage data
     batch_coverage_list = []
+    aligned_read_count = 0
+    window_aligned_read_count = 0
+    total_read_count = 0
 
     for bam_file in bam_batch:
         bam_file_full = bam_directory + bam_file
         bamfile = HTSeq.BAM_Reader(bam_file_full)
         coverage = HTSeq.GenomicArray("auto", stranded=False, typecode="i")
 
-        aligned_read_count = 0
+        
 
         # Read through the bam file and add coverage
         for almnt in bamfile:
+            total_read_count += 1
             if almnt.aligned:
                 coverage[almnt.iv] += 1
                 aligned_read_count += 1
 
         # Calculate coverage for each window and store it
         for window_start, window_end in windows:
-            window_iv = HTSeq.GenomicInterval(reference_genome, window_start, window_end, ".") # U00096.3
+            window_iv = HTSeq.GenomicInterval(reference_genome, window_start, window_end, ".") 
+            window_ref = reference_genome
+            window_start_pos = window_start
+            window_end_pos = window_end
+    
+            # Iterate over alignments in the window
+            for almnt in bamfile.fetch(window_ref, window_start_pos, window_end_pos):
+                if almnt.aligned:
+                    window_aligned_read_count += 1
             coverage_array = numpy.fromiter(coverage[window_iv], dtype='i', count=window_end - window_start)
             #coverage_array = coverage_array / count_dict[bam_file]  # Normalize by total number of spacers per bam file          CHANGE MAYBE
             coverage_array, num_bins = bin_coverage(coverage_array, binsize)  # Bin the coverage array
@@ -123,7 +174,7 @@ def process_batch(bam_batch, windows, reference_genome, binsize, bam_directory):
     # Convert to DataFrame
     batch_coverage_columns = ['Window_Start', 'Window_End'] + [f'Pos_{i}' for i in range(num_bins)]
     batch_coverage_df = pd.DataFrame(batch_coverage_list, columns=batch_coverage_columns)
-    return batch_coverage_df, aligned_read_count
+    return batch_coverage_df, aligned_read_count, window_aligned_read_count, total_read_count
 
 def define_peaks(coverage_data, local_threshold=0.3, global_threshold=0.001, window_info= False):
     if not window_info:
@@ -196,7 +247,7 @@ def get_operon_spacer_counts(count_df, gene_df, operon_df):
 
     return operon_spacer_counts_df
 
-def get_gene_spacer_counts(count_df, gene_df): # no used (?)
+def get_gene_spacer_counts(count_df, gene_df): # not used (?)
     # Create a dictionary to store gene spacer counts
     gene_spacer_counts_normalized = {}
     no_genes = count_df.shape[0]
@@ -395,13 +446,82 @@ def normalize_coverage_per_TU(coverage_data, TU_spacer_counts_df, no_bin, binsiz
     return normalized_coverage_data
 
 
-def normalize_coverage_for_tot_aligned_reads(coverage_df, library_size, expected_aligned_reads_per_library):
+def normalize_coverage_for_tot_aligned_reads_old(coverage_df, library_size, expected_aligned_reads_per_library):
+    # Create a copy of the DataFrame to avoid modifying the original data
     coverage_df_normalized = coverage_df.copy()
-    coverage_df_normalized[:, 2:] = coverage_df[:, 2:] / (library_size/expected_aligned_reads_per_library)
+    coverage_df_normalized.iloc[:, 2:] = coverage_df.iloc[:, 2:] * (expected_aligned_reads_per_library / library_size)
     
     return coverage_df_normalized
 
-
         
 
-   
+def normalize_coverage_for_tot_aligned_reads(coverage_data, library_size, expected_aligned_reads_per_library):
+    # Check if the input is a pandas DataFrame
+    if isinstance(coverage_data, pd.DataFrame):
+        # For DataFrame, create a copy and use iloc for indexing
+        coverage_normalized = coverage_data.copy()
+        coverage_normalized.iloc[:, 2:] *= (expected_aligned_reads_per_library / library_size)
+    elif isinstance(coverage_data, numpy.ndarray):
+        # For NumPy array, use slicing for indexing
+        coverage_normalized = coverage_data.copy()
+        coverage_normalized[:, 2:] *= (expected_aligned_reads_per_library / library_size)
+    else:
+        raise TypeError("Input must be a pandas DataFrame or a NumPy array")
+
+    return coverage_normalized
+
+
+def expand_count_df(counts_df, OUTDIR = False):
+    expanded_rows = []
+
+    for _, row in counts_df.iterrows():
+        gene_name = row['Geneid']
+        gene_start = row['Start']
+        gene_end = row['End']
+        chromosome = row['Chr']
+        direction = row['Strand']
+
+        try:
+            # Test if gene_start and gene_end can be converted to float (i.e., they don't contain ';')
+            float(gene_start)
+            float(gene_end)
+            # If conversion is successful, append the row as is
+            expanded_rows.append(row)
+        except ValueError:
+            # Split gene_start and gene_end values by ';' if they contain multiple values
+            gene_starts = str(gene_start).split(';')
+            gene_ends = str(gene_end).split(';')
+            chromosome = str(chromosome).split(';')
+            direction = str(direction).split(';')
+
+            # Ensure the lengths of starts and ends are equal
+            if len(gene_starts) != len(gene_ends):
+                print(f"Unequal number of starts and ends for gene {gene_name}. Skipping this row.")
+                continue
+
+            # Process the columns from the 6th column onwards
+            gene_counts = row[6:]
+
+            # Create new rows for each start and end pair
+            for i, (start, end) in enumerate(zip(gene_starts, gene_ends)):
+                new_row = row.copy()
+                new_row['Geneid'] = f'{gene_name}_{i+1}' if i > 0 else gene_name
+                new_row['Start'] = int(start)
+                new_row['End'] = int(end)
+                new_row['Chr'] = chromosome[i]
+                new_row['Strand'] = direction[i]
+                new_row['Length'] = int(end) - int(start) + 1
+
+                # Distribute counts equally among the rows
+                for count_col in gene_counts.index:
+                    new_row[count_col] = float(gene_counts[count_col]) / len(gene_starts)
+
+                expanded_rows.append(new_row)
+
+    # Create a new DataFrame from the expanded rows
+    expanded_df = pd.DataFrame(expanded_rows)
+    if OUTDIR:
+        # Save the expanded DataFrame
+        expanded_df.to_csv(f"{OUTDIR}/expanded_counts.csv", index=False)
+
+    return expanded_df

@@ -10,8 +10,8 @@ from tensorflow.keras.callbacks import EarlyStopping
 
 window_size = 3200
 overlap = 1600
-no_bin = 800
-binsize = 4
+no_bin = 3200
+binsize = 1
 dataset_name = 'paraquat_window_3200_overlapt_1600_binsize_4'
 model_name = 'CNN_BiLSTM_custom_pooling_dual_input_4_2'
 model = CNN_BiLSTM_custom_pooling_dual_input_4_2()
@@ -21,7 +21,7 @@ erly_stopping_patience = 10
 epochs = 200
 ###############################################################
 
-outdir = '../spacer_coverage_output/'
+outdir = '../spacer_coverage_output_2/'
 data_dir = '/cluster/scratch/hugifl/spacer_coverage_final_data/'
 data_file = data_dir + dataset_name + "_data"+"/train_test_data_normalized_windows_info_smoothed.npz"
 data = np.load(data_file)

@@ -16,3 +16,36 @@ rule spacer_coverage_data_prep:
     output: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data_data/window_coverage_data_summed.csv, /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data_data/gene_spacer_counts.csv, /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data_data/tot_number_aligned_reads.txt
     jobid: 1
 
+[Wed Jan  3 18:05:33 2024]
+Finished job 1.
+1 of 4 steps (25%) done
+
+[Wed Jan  3 18:05:33 2024]
+rule sequence_data_prep:
+    input: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data_data/window_coverage_data_summed.csv
+    output: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data_data/XY_data_Y_with_windows.npz
+    jobid: 2
+
+[Wed Jan  3 18:46:45 2024]
+Finished job 2.
+2 of 4 steps (50%) done
+
+[Wed Jan  3 18:46:45 2024]
+rule prepare_train_test_data:
+    input: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data_data/XY_data_Y_with_windows.npz
+    output: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data_data/train_test_data_normalized_windows_info_.npz
+    jobid: 3
+
+[Wed Jan  3 18:46:53 2024]
+Finished job 3.
+3 of 4 steps (75%) done
+
+[Wed Jan  3 18:46:53 2024]
+localrule all:
+    input: /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data_data/window_coverage_data_summed.csv, /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data_data/XY_data_Y_with_windows.npz, /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data_data/train_test_data_normalized_windows_info_.npz, /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data_data/gene_spacer_counts.csv, /cluster/scratch/hugifl/spacer_coverage_final_data/Diet2_window_3200_overlap_1600_no_binning_gene_normalized_data_data/tot_number_aligned_reads.txt
+    jobid: 0
+
+[Wed Jan  3 18:46:53 2024]
+Finished job 0.
+4 of 4 steps (100%) done
+Complete log: /cluster/home/hugifl/spacer_coverage_prediction/.snakemake/log/2024-01-03T115521.215595.snakemake.log
