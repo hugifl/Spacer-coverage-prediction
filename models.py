@@ -192,7 +192,55 @@ class CNN_BiLSTM_custom_pooling_dual_input_4(Model): # better than previous
         x = self.bilstm(combined)
         x = self.drop3(x)
         return self.final_conv(x)
-    
+
+
+class CNN_BiLSTM_custom_pooling_dual_input_old(Model): # better than previous
+    def __init__(self):
+        super(CNN_BiLSTM_custom_pooling_dual_input_old, self).__init__()
+        # DNA sequence stream
+        self.conv1_seq = Conv1D(filters=100, kernel_size=10, padding='same')
+        self.batchnorm1_seq = BatchNormalization()  # Batch normalization layer
+        self.conv3_seq = Conv1D(filters=150, kernel_size=20, padding='same')
+        self.batchnorm3_seq = BatchNormalization()  # Batch normalization layer
+        self.drop2_seq = Dropout(0.2)
+
+        # Gene/operon annotation stream
+        self.conv1_anno = Conv1D(filters=50, kernel_size=4, padding='same')
+        self.batchnorm1_anno = BatchNormalization()  # Batch normalization layer
+        self.conv2_anno = Conv1D(filters=100, kernel_size=16, padding='same')
+        self.batchnorm2_anno = BatchNormalization()  # Batch normalization layer
+        self.drop2_anno = Dropout(0.2)
+
+        # Shared layers
+        self.bilstm = Bidirectional(LSTM(32, return_sequences=True, dropout=0.2))
+        self.drop3 = Dropout(0.2)
+        self.final_conv = Conv1D(filters=1, kernel_size=1, activation='relu', padding='same')
+
+    def call(self, inputs):
+        inputs_seq, inputs_anno = inputs
+        # DNA sequence stream
+        x_seq = self.conv1_seq(inputs_seq)
+        x_seq = self.batchnorm1_seq(x_seq, training=False)
+        x_seq = self.conv3_seq(x_seq)
+        x_seq = self.batchnorm3_seq(x_seq, training=False)
+        x_seq = self.drop2_seq(x_seq)
+
+        # Gene/operon annotation stream
+        x_anno = self.conv1_anno(inputs_anno)
+        x_anno = self.batchnorm1_anno(x_anno, training=False)
+        x_anno = self.conv2_anno(x_anno)
+        x_anno = self.batchnorm2_anno(x_anno, training=False)
+        x_anno = self.drop2_anno(x_anno)
+
+        # Combine the outputs of both streams
+        combined = concatenate([x_seq, x_anno])
+
+        # Shared layers
+        x = self.bilstm(combined)
+        x = self.drop3(x)
+        return self.final_conv(x)
+
+
 
 class CNN_BiLSTM_custom_pooling_dual_input_4_2(Model): # better than previous
     def __init__(self):

@@ -3,22 +3,23 @@ import numpy as np
 import pandas as pd
 from tensorflow.keras.models import load_model
 from custom_elements import  custom_loss_with_l1, poisson_loss, spearman_correlation
-
+from utils_training import filter_annotation_features
 ##################### Set before plotting #####################
 
 window_size = 3200
 overlap = 1600
-no_plots = 70
-no_bin = 800
-binsize = 4
-dataset_name = 'window_3200_overlapt_1600_binsize_4'
-model_to_load = 'model = CNN_BiLSTM_custom_pooling_dual_input_4_1'
-model_name = 'CNN_BiLSTM_custom_pooling_dual_input_4_1'
-
+no_plots = 20
+no_bin = 3200
+binsize = 1
+dataset_name = '3200_1600_gene_norm'
+model_to_load = 'Model_1'
+model_name = 'Model_1'
+coverage_scaling_factor = 1
+annotation_features_to_use = ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector']
 ###############################################################
-outdir = '../spacer_coverage_output/'
-datadir = '/cluster/scratch/hugifl/spacer_coverage_final_data/'
-data_file = datadir + dataset_name + "_data"+"/train_test_data_normalized_windows_info_smoothed.npz"
+outdir = '../spacer_coverage_output_2/'
+datadir = '/cluster/scratch/hugifl/spacer_coverage_final_data_2/'
+data_file = datadir + dataset_name + "_data"+"/train_test_data_normalized_windows_info.npz"
 
 promoter_file = '../spacer_coverage_input/ECOCYC_promoters.txt'
 terminator_file = '../spacer_coverage_input/ECOCYC_terminators.txt'
@@ -35,7 +36,8 @@ gene_df.drop(gene_df.columns[1], axis=1, inplace=True)
 gene_df.dropna(inplace=True)
 
 
-loaded_model = load_model(outdir + dataset_name + "_outputs/models/" + model_to_load, custom_objects={'poisson_loss': poisson_loss, 'spearman_correlation':spearman_correlation}) #, custom_objects={'poisson_loss': poisson_loss}
+loaded_model = load_model(outdir + dataset_name + "_outputs/models/" + model_to_load, custom_objects={'poisson_loss': poisson_loss}) #, custom_objects={'poisson_loss': poisson_loss} ,, 'spearman_correlation':spearman_correlation
+print(loaded_model.summary())
 
 data = np.load(data_file)
 X_train = data['X_train']
@@ -44,10 +46,10 @@ Y_train = data['Y_train']
 Y_test = data['Y_test']
 # Adjust the coverage data
 
-scaling_factor = 1
 
-Y_test[:,2:] = Y_test[:,2:] * scaling_factor
-Y_train[:,2:] = Y_train[:,2:] * scaling_factor
+
+Y_test[:,2:] = Y_test[:,2:] * coverage_scaling_factor
+Y_train[:,2:] = Y_train[:,2:] * coverage_scaling_factor
 
 
 # Find rows with NaNs or Infs in Y_train
@@ -62,18 +64,18 @@ X_test_filtered = X_test[~rows_with_nans_or_infs]
 
 
 # Filter out windows that contain genes with coverage peaks too high (normalization error due to wrong/non-matching coordinates) or too low (low gene expression, noisy profile)
-indices_to_remove_train = np.where((Y_train_filtered[:,2:] > 200).any(axis=1) | (Y_train_filtered[:,2:].max(axis=1) < 5))[0]
+#indices_to_remove_train = np.where((Y_train_filtered[:,2:] > 200).any(axis=1) | (Y_train_filtered[:,2:].max(axis=1) < 5))[0]
+##
+### Remove these rows from Y_train and X_train
+#Y_train_filtered = np.delete(Y_train_filtered, indices_to_remove_train, axis=0)
+#X_train_filtered = np.delete(X_train_filtered, indices_to_remove_train, axis=0)
 #
-## Remove these rows from Y_train and X_train
-Y_train_filtered = np.delete(Y_train_filtered, indices_to_remove_train, axis=0)
-X_train_filtered = np.delete(X_train_filtered, indices_to_remove_train, axis=0)
-
-## Find indices where the maximum value in a row of Y_test exceeds 20 or is below 2
-indices_to_remove_test = np.where((Y_test_filtered[:,2:] > 200).any(axis=1) | (Y_test_filtered[:,2:].max(axis=1) < 5))[0]
-#
-## Remove these rows from Y_test and X_test
-Y_test_filtered = np.delete(Y_test_filtered, indices_to_remove_test, axis=0)
-X_test_filtered = np.delete(X_test_filtered, indices_to_remove_test, axis=0)
+### Find indices where the maximum value in a row of Y_test exceeds 20 or is below 2
+#indices_to_remove_test = np.where((Y_test_filtered[:,2:] > 200).any(axis=1) | (Y_test_filtered[:,2:].max(axis=1) < 5))[0]
+##
+### Remove these rows from Y_test and X_test
+#Y_test_filtered = np.delete(Y_test_filtered, indices_to_remove_test, axis=0)
+#X_test_filtered = np.delete(X_test_filtered, indices_to_remove_test, axis=0)
 
 #Y_train_binarized = (Y_train_filtered > 2).astype(int)
 #Y_test_binarized = (Y_test_filtered > 2).astype(int)
@@ -85,6 +87,8 @@ X_train_anno = X_train_filtered[:, :, 4:] # Annotation data
 X_test_seq = X_test_filtered[:, :, :4]  # Sequence data
 X_test_anno = X_test_filtered[:, :, 4:] # Annotation data
 
+# Filter the annotation arrays
+X_train_anno, X_test_anno = filter_annotation_features(X_train_anno, X_test_anno, annotation_features_to_use)
 
-plots = plot_predicted_vs_observed(loaded_model, model_name, X_test_seq, X_test_anno, Y_test_filtered, no_plots, no_bin, outdir, dataset_name, window_size, promoter_df, terminator_df, gene_df, binsize, log_scale = True)
+plots = plot_predicted_vs_observed(loaded_model, model_name, X_test_seq, X_test_anno, Y_test_filtered, no_plots, no_bin, outdir, dataset_name, window_size, promoter_df, terminator_df, gene_df, binsize, log_scale = False)
 print(plots)

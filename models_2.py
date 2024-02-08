@@ -15,21 +15,24 @@ Dropout = tf.keras.layers.Dropout
 Bidirectional = tf.keras.layers.Bidirectional
 LSTM = tf.keras.layers.LSTM
 
-class CNN_1_layer(Model):
-    def __init__(self, num_layers_seq, num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno):
-        super(CNN_1_layer, self).__init__()
+class CNN(Model):
+    def __init__(self, num_layers_seq, num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, only_seq):
+        super(CNN, self).__init__()
 
-        # Check that the hyperparameter lists are consistent with the number of layers
+        # Assertions for hyperparameter list lengths
         assert len(filter_number_seq) >= num_layers_seq and len(kernel_size_seq) >= num_layers_seq, "Sequence stream lists must match the number of layers"
         assert len(filter_number_anno) >= num_layers_anno and len(kernel_size_anno) >= num_layers_anno, "Annotation stream lists must match the number of layers"
 
         # DNA sequence stream layers
-        self.seq_layers = [Conv1D(filters=filter_number_seq[i], kernel_size=kernel_size_seq[i], padding='same') for i in range(num_layers_seq)]
+        self.seq_layers = [Conv1D(filters=filter_number_seq[i], kernel_size=kernel_size_seq[i], padding='same', activation='relu') for i in range(num_layers_seq)]
         self.drop_seq = Dropout(0.2)
 
-        # Gene/operon annotation stream layers
-        self.anno_layers = [Conv1D(filters=filter_number_anno[i], kernel_size=kernel_size_anno[i], padding='same') for i in range(num_layers_anno)]
-        self.drop_anno = Dropout(0.2)
+        self.only_seq = only_seq  
+
+        if not only_seq:
+            # Gene/operon annotation stream layers
+            self.anno_layers = [Conv1D(filters=filter_number_anno[i], kernel_size=kernel_size_anno[i], padding='same', activation='relu') for i in range(num_layers_anno)]
+            self.drop_anno = Dropout(0.2)
 
         # Shared layers
         self.final_conv = Conv1D(filters=1, kernel_size=1, activation='relu', padding='same')
@@ -43,27 +46,19 @@ class CNN_1_layer(Model):
             x_seq = layer(x_seq)
         x_seq = self.drop_seq(x_seq)
 
-        # Gene/operon annotation stream
-        x_anno = inputs_anno
-        for layer in self.anno_layers:
-            x_anno = layer(x_anno)
-        x_anno = self.drop_anno(x_anno)
-
-        # Combine the outputs of both streams
-        combined = concatenate([x_seq, x_anno])
+        if not self.only_seq:
+            # Gene/operon annotation stream
+            x_anno = inputs_anno
+            for layer in self.anno_layers:
+                x_anno = layer(x_anno)
+            x_anno = self.drop_anno(x_anno)
+            combined = concatenate([x_seq, x_anno])
+        else:
+            combined = x_seq
 
         # Shared layers
         return self.final_conv(combined)
 
-# Example usage
-#num_layers_seq = 1  # Specify the number of layers for sequence stream
-#num_layers_anno = 1  # Specify the number of layers for annotation stream
-#filter_number_seq = [100]  # Example list for sequence stream filters
-#filter_number_anno = [100]  # Example list for annotation stream filters
-#kernel_size_seq = [5]  # Example list for sequence stream kernel sizes
-#kernel_size_anno = [5]  # Example list for annotation stream kernel sizes
-#
-#model = CNN_1_layer(num_layers_seq, num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno)
 
 class CNN_1_layer(Model): # better than previous
     def __init__(self):

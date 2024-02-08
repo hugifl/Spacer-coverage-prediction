@@ -1,0 +1,5 @@
+# Test scripts
+test*
+
+# SLURM outputs
+slurm*

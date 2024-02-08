@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "coverage_data_prep_test.py", line 8, in <module>
-    import total_count_per_bam, filter_bamlist, filter_bamlist_2, get_windows, process_batch, normalize_coverage_per_gene, get_normalized_spacer_counts_per_gene, normalize_coverage_for_tot_aligned_reads
-ModuleNotFoundError: No module named 'total_count_per_bam'

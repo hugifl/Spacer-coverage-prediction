@@ -7,6 +7,9 @@ from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 import pandas as pd
+from tensorflow.keras.callbacks import Callback
+from scipy.signal import find_peaks
+import numpy as np
 
 # Pooling layer that applies max pooling on all channels and max pooling of the absolute values on the last channel (contains -1/1 values)
 class CustomPooling(tf.keras.layers.Layer):
@@ -188,3 +191,69 @@ def find_and_plot_peaks(data, filename, height=None, distance=None, prominence=N
     plt.show()
 
     return peaks
+
+
+
+class PearsonCorrelationCallback(Callback):
+    def __init__(self, X_seq, X_anno, Y_true, batch_size, use_log=True, plot=False):
+        super().__init__()
+        self.X_seq = X_seq
+        self.X_anno = X_anno
+        self.Y_true = Y_true
+        self.batch_size = batch_size
+        self.use_log = use_log
+        self.plot = plot
+    
+    def on_epoch_end(self, epoch, logs=None):
+        predictions = self.model.predict([self.X_seq, self.X_anno], batch_size=self.batch_size)
+        correlations = []
+        
+        # Iterate through each sample
+        for observed, predicted in zip(self.Y_true, predictions):
+            if self.use_log:
+                observed_transformed = np.log2(observed + 1e-9)
+                predicted_transformed = np.log2(predicted + 1e-9)
+            else:
+                observed_transformed = observed
+                predicted_transformed = predicted
+            
+            # Compute Pearson correlation for each sample
+            correlation, _ = pearsonr(observed_transformed, predicted_transformed)
+            correlations.append(correlation)
+        
+        # Calculate the average Pearson correlation
+        avg_correlation = np.mean(correlations)
+        max_correlation = np.max(correlations)
+        min_correlation = np.min(correlations)
+        print(f'Epoch {epoch+1} Average Pearson Correlation: {avg_correlation:.4f} Max Pearson Correlation: {max_correlation:.4f} Min Pearson Correlation: {min_correlation:.4f}')
+
+class F1ScoreCallback(Callback):
+    def __init__(self, X_seq, X_anno, Y_true, batch_size, width=None, prominence=None, overlap_threshold=0.02, data_length=None):
+        super().__init__()
+        self.X_seq = X_seq
+        self.X_anno = X_anno
+        self.Y_true = Y_true
+        self.batch_size = batch_size
+        self.width = width
+        self.prominence = prominence
+        self.overlap_threshold = overlap_threshold
+        self.data_length = data_length
+
+    def on_epoch_end(self, epoch, logs=None):
+        predictions = self.model.predict([self.X_seq, self.X_anno], batch_size=self.batch_size)
+        f1_scores = []
+
+        # Iterate through each sample in batch
+        for observed, predicted in zip(self.Y_true, predictions):
+            # Make sure to process one sample at a time, flattening if necessary
+            observed = observed.flatten()
+            predicted = predicted.flatten()
+
+            observed_peaks, observed_properties = find_peaks(observed, width=self.width, prominence=self.prominence)
+            predicted_peaks, predicted_properties = find_peaks(predicted, width=self.width, prominence=self.prominence)
+
+            f1_score = calculate_peak_f1_score(observed_peaks, predicted_peaks, observed_properties, predicted_properties, overlap_threshold=self.overlap_threshold, data_length=self.data_length or observed.shape[0])
+            f1_scores.append(f1_score)
+
+        avg_f1_score = np.mean(f1_scores)
+        print(f'Epoch {epoch+1} Average F1 Score: {avg_f1_score:.4f}')

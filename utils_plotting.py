@@ -1,5 +1,6 @@
 import numpy
 from matplotlib import pyplot
+import os
 
 
 
@@ -140,8 +141,10 @@ def plot_window_coverage_normalized(normalized_coverage_with_windows_info, no_pl
 
 
 def plot_predicted_vs_observed(model, model_name, X_test_seq, X_test_annot, normalized_coverage_with_windows_info, no_plots, no_bin, outpath, dataset_name, window_size, promoter_df, terminator_df, gene_df, binsize, log_scale):
-    outpath = outpath + dataset_name+ "_outputs" + "/" + "prediction_plots/"
-    
+    outpath = outpath + dataset_name+ "_outputs" + "/" + f"prediction_plots_{model_name}/"
+    if not os.path.exists(outpath):
+        os.makedirs(outpath)
+
     x_coord = numpy.arange(0, no_bin)               
     no_plots = int(no_plots)
     
