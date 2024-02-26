@@ -24,7 +24,7 @@ dataset_name = '3200_1600_gene_norm'
 
 
 model_configurations = {
-    'CNN_biLSTM_CustomAttention_1_3': {
+    'CNN_biLSTM_CustomAttention_1_4': {
         'architecture': CNN_biLSTM_CustomAttention,
         'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
         'epochs': 50,
@@ -35,14 +35,52 @@ model_configurations = {
         'filter_number_anno': [100,100],
         'kernel_size_seq': [5,5],
         'kernel_size_anno': [5,5],
-        'biLSTM_num_layers_seq': 1,
-        'biLSTM_num_layers_anno': 1,
-        'unit_numbers_seq': [24],
-        'unit_numbers_anno': [24],
-        'unit_numbers_combined': 24,
+        'biLSTM_num_layers_seq': 0,
+        'biLSTM_num_layers_anno': 0,
+        'unit_numbers_seq': [],
+        'unit_numbers_anno': [],
+        'unit_numbers_combined': 64,
         'only_seq': False
     }
 }
+#model_configurations = {
+#    'CNN_biLSTM_13': {
+#        'architecture': CNN_biLSTM_1,
+#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
+#        'epochs': 50,
+#        'learning_rate': 0.005,
+#        'CNN_num_layers_seq': 2,
+#        'CNN_num_layers_anno': 2,
+#        'filter_number_seq': [100,100],
+#        'filter_number_anno': [100,100],
+#        'kernel_size_seq': [5,5],
+#        'kernel_size_anno': [5,5],
+#        'biLSTM_num_layers_seq': 0,
+#        'biLSTM_num_layers_anno': 0,
+#        'unit_numbers_seq': [],
+#        'unit_numbers_anno': [],
+#        'unit_numbers_combined': 8,
+#        'only_seq': False
+#    },
+#    'CNN_biLSTM_AddAttention_1': {
+#        'architecture': CNN_biLSTM_AddAttention,
+#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
+#        'epochs': 50,
+#        'learning_rate': 0.005,
+#        'CNN_num_layers_seq': 2,
+#        'CNN_num_layers_anno': 2,
+#        'filter_number_seq': [100,100],
+#        'filter_number_anno': [100,100],
+#        'kernel_size_seq': [5,5],
+#        'kernel_size_anno': [5,5],
+#        'biLSTM_num_layers_seq': 0,
+#        'biLSTM_num_layers_anno': 0,
+#        'unit_numbers_seq': [],
+#        'unit_numbers_anno': [],
+#        'unit_numbers_combined': 8,
+#        'only_seq': False
+#    }
+#}
 
 #model_configurations = {
 #    

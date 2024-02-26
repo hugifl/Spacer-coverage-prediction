@@ -24,7 +24,7 @@ dataset_name = '3200_1600_gene_norm'
 
 
 model_configurations = {
-    'CNN_biLSTM_CustomAttention_1_3': {
+    'CNN_biLSTM_CustomAttention_1_4': {
         'architecture': CNN_biLSTM_CustomAttention,
         'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
         'epochs': 50,
@@ -37,9 +37,9 @@ model_configurations = {
         'kernel_size_anno': [5,5],
         'biLSTM_num_layers_seq': 1,
         'biLSTM_num_layers_anno': 1,
-        'unit_numbers_seq': [24],
-        'unit_numbers_anno': [24],
-        'unit_numbers_combined': 24,
+        'unit_numbers_seq': [32],
+        'unit_numbers_anno': [12],
+        'unit_numbers_combined': 32,
         'only_seq': False
     }
 }

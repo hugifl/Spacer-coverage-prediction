@@ -16,7 +16,7 @@ overlap = 1600
 no_bin = 3200
 binsize = 1
 dataset_name = '3200_1600_gene_norm'
-model_name = 'Model_test'
+model_name = 'ttestst'
 
 num_layers_seq = 1  # Specify the number of layers for sequence stream
 num_layers_anno = 1  # Specify the number of layers for annotation stream
@@ -28,11 +28,11 @@ only_seq = False  # If True, only sequence data is used, if False, both sequence
 
 annotation_features_to_use = ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'] #'gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector', 'TU_forward_start_end', 'TU_reverse_start_end', 'TU_forward_body', 'TU_reverse_body', 'TU_forward_body_cummul', 'TU_reverse_body_cummul'
 
-model = CNN_BiLSTM_custom_pooling_dual_input_old()
+model = CNN(num_layers_seq, num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, only_seq)
 
 learning_rate = 0.0005 #0.0005
 erly_stopping_patience = 10
-epochs = 100
+epochs = 2
 
 coverage_scaling_factor = 1
 ###############################################################
@@ -109,7 +109,7 @@ model.compile(optimizer=optimizer, loss = poisson_loss, run_eagerly=True)  # cus
 
 #model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'], run_eagerly=True)
 
-
+print("training model")
 # Train the model
 history = model.fit(
     [X_train_seq, X_train_anno],
@@ -119,12 +119,12 @@ history = model.fit(
     validation_data=([X_test_seq, X_test_anno], Y_test_filtered),
     callbacks=[early_stopping, nan_checker, pearson_callback, f1_callback]
 )
-
+print("evaluating model")
 test_loss = model.evaluate([X_test_seq, X_test_anno], Y_test, verbose=0)
-
+print("predicting test set")
 # Predict on the test set
 Y_pred = model.predict([X_test_seq, X_test_anno])
-
+print("evaluating test set")
 # Calculate average Pearson correlation and F1 score using the provided evaluate_model function
 avg_pearson_correlation, avg_f1_score = evaluate_model(Y_test, Y_pred, model_name, outdir, dataset_name, width=10, prominence=0.05, overlap_threshold=0.02)
 

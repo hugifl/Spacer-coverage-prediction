@@ -1,6 +1,7 @@
 import numpy
 from matplotlib import pyplot
 import os
+from scipy.signal import find_peaks
 
 
 
@@ -147,7 +148,7 @@ def plot_predicted_vs_observed(model, model_name, X_test_seq, X_test_annot, norm
 
     x_coord = numpy.arange(0, no_bin)               
     no_plots = int(no_plots)
-    
+    numpy.random.seed(42) 
     indices = numpy.random.choice(X_test_seq.shape[0], no_plots, replace=False)
     counter = 0
     for idx in indices:
@@ -156,7 +157,7 @@ def plot_predicted_vs_observed(model, model_name, X_test_seq, X_test_annot, norm
         print(counter / no_plots)
 
         coverage_predicted = model.predict([X_test_seq[idx:idx+1], X_test_annot[idx:idx+1]])[0]
-        
+        coverage_predicted = coverage_predicted.flatten()
         normalized_coverage = normalized_coverage_with_windows_info[idx, 2:]  # Skip the first two columns which contain the window start and end sites.
 
         window_start = int(normalized_coverage_with_windows_info[idx, 0])
@@ -203,12 +204,17 @@ def plot_predicted_vs_observed(model, model_name, X_test_seq, X_test_annot, norm
             if (0 <= terminator_end < window_size):
                 terminator_ends.append(int(terminator_end/binsize))
 
+        # Peaks
+        observed_peaks, observed_properties = find_peaks(normalized_coverage, width=10, prominence=0.05)
+        predicted_peaks, predicted_properties = find_peaks(coverage_predicted, width=10, prominence=0.05)
         # Plotting
         pyplot.style.use('ggplot')
         pyplot.figure(figsize=(12, 6))
         ymax = normalized_coverage.max() + (normalized_coverage.max() * 0.1)
         pyplot.plot(x_coord, normalized_coverage, color="blue", label='Observed Coverage Normalized by Gene Expression')
+        pyplot.plot(observed_peaks, normalized_coverage[observed_peaks], "x", color='midnightblue', label='Observed Peaks')
         pyplot.plot(x_coord, coverage_predicted, color="purple", label='Predicted Coverage')
+        pyplot.plot(predicted_peaks, coverage_predicted[predicted_peaks], "x", color='indigo', label='Predicted Peaks')
         pyplot.title(f"Predicted vs. Observed Coverage over Window {window_start}-{window_end}")
         pyplot.xlabel('Bins')
         pyplot.ylabel('Normalized Coverage')
@@ -276,10 +282,12 @@ def plot_predicted_vs_observed(model, model_name, X_test_seq, X_test_annot, norm
 
 def plot_window_coverage_normalized_compare_profiles(normalized_coverage_with_windows_info_1, normalized_coverage_with_windows_info_2, normalized_coverage_with_windows_info_3, normalized_coverage_with_windows_info_4, experiment_1_name, experiment_2_name , experiment_3_name, experiment_4_name , no_plots, no_bin, outpath, window_size, promoter_df, terminator_df, gene_df, binsize, random = True):
     outpath = outpath + "window_coverage_plots_experiment_comparison/"
-    
+    if not os.path.exists(outpath):
+        os.makedirs(outpath)
     x_coord = numpy.arange(0, no_bin)               
     no_plots = int(no_plots)
     if random:
+        numpy.random.seed(42) 
         indices = numpy.random.choice(normalized_coverage_with_windows_info_1.shape[0], no_plots, replace=False)
     else:
         total_entries = int(len(normalized_coverage_with_windows_info_1))

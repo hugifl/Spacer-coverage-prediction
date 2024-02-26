@@ -8,12 +8,12 @@ from utils_training import filter_annotation_features
 
 window_size = 3200
 overlap = 1600
-no_plots = 20
+no_plots = 40
 no_bin = 3200
 binsize = 1
 dataset_name = '3200_1600_gene_norm'
-model_to_load = 'Model_1'
-model_name = 'Model_1'
+model_to_load = 'CNN_biLSTM_10'
+model_name = 'CNN_biLSTM_10'
 coverage_scaling_factor = 1
 annotation_features_to_use = ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector']
 ###############################################################
@@ -37,7 +37,7 @@ gene_df.dropna(inplace=True)
 
 
 loaded_model = load_model(outdir + dataset_name + "_outputs/models/" + model_to_load, custom_objects={'poisson_loss': poisson_loss}) #, custom_objects={'poisson_loss': poisson_loss} ,, 'spearman_correlation':spearman_correlation
-print(loaded_model.summary())
+#print(loaded_model.summary())
 
 data = np.load(data_file)
 X_train = data['X_train']
@@ -61,7 +61,6 @@ X_train_filtered = X_train[~rows_with_nans_or_infs]
 rows_with_nans_or_infs = np.any(np.isnan(Y_test) | np.isinf(Y_test), axis=1)
 Y_test_filtered = Y_test[~rows_with_nans_or_infs]
 X_test_filtered = X_test[~rows_with_nans_or_infs]
-
 
 # Filter out windows that contain genes with coverage peaks too high (normalization error due to wrong/non-matching coordinates) or too low (low gene expression, noisy profile)
 #indices_to_remove_train = np.where((Y_train_filtered[:,2:] > 200).any(axis=1) | (Y_train_filtered[:,2:].max(axis=1) < 5))[0]
@@ -90,5 +89,7 @@ X_test_anno = X_test_filtered[:, :, 4:] # Annotation data
 # Filter the annotation arrays
 X_train_anno, X_test_anno = filter_annotation_features(X_train_anno, X_test_anno, annotation_features_to_use)
 
-plots = plot_predicted_vs_observed(loaded_model, model_name, X_test_seq, X_test_anno, Y_test_filtered, no_plots, no_bin, outdir, dataset_name, window_size, promoter_df, terminator_df, gene_df, binsize, log_scale = False)
-print(plots)
+print("head of Y_test_filtered", Y_test_filtered[:10, :5])
+
+#plots = plot_predicted_vs_observed(loaded_model, model_name, X_test_seq, X_test_anno, Y_test_filtered, no_plots, no_bin, outdir, dataset_name, window_size, promoter_df, terminator_df, gene_df, binsize, log_scale = False)
+#print(plots)

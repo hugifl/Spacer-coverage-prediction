@@ -1,6 +1,6 @@
 ############################################# DATASET PREPARATION #############################################
 
-dataset_name: 'Diet1_3200_1600_gene_norm' # Name of the dataset
+dataset_name: 'Diet1_3200_1600_TU_norm_V2' # Name of the dataset
 
 ###################### Specifications ######################
 window_size: '3200'       # Size of genomic windows that serve as input
@@ -12,7 +12,7 @@ binsize: '1'             # Binsize to bin coverage profiles (should be a power o
 bam_batchsize: '5'   #set to 5    # Size of batches of .bam files to be processed together (depends on memory, decrease batchsize if you process more windows per file)
 bamfile_start: 'BSSE'       # Start of bam file names
 reads_per_experiment: '10000000' # Expected amount of total aligned reads across all samples. Used to keep scale of coverage profiles constant across datasets / experiments 
-normalization_unit: 'gene' # gene or TU (transcription unit)
+normalization_unit: 'TU' # gene or TU (transcription unit)
 reference_genome: 'U00096.3' # Reference genome name
 ###################### Files ######################
 input_directory_reads: '/cluster/scratch/hugifl/' # Directory with bam files
@@ -25,5 +25,5 @@ gene_file: 'ECOCYC_genes.txt'   # File from ECOCYC with gene start and end sites
 promoter_file: 'ECOCYC_promoters.txt'     # File from ECOCYC with promoter absolute + 1 positions
 terminator_file: 'ECOCYC_terminators.txt'     # File from ECOCYC with terminator start and end sites
 genome_fasta: 'U00096.3.fasta'  # Genome sequence in .fasta format
-count_matrix: 'genomeCounts_diet1_new.txt' # Matrix with spacer counts per gene per fasta file for normalization purposes
-bam_files: '/cluster/scratch/hugifl/gut_diet1_run_2/outputs/alignments/genomeBams'  # Spacer alignment .bam files
+count_matrix: 'genomeCounts_TU_diet1.txt' # Matrix with spacer counts per gene per fasta file for normalization purposes
+bam_files: '/cluster/scratch/hugifl/gut_diet1_run_3/outputs/alignments/genomeBams'  # Spacer alignment .bam files

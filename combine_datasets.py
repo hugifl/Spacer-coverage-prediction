@@ -5,8 +5,8 @@ from utils_train_test_data import custom_train_test_split, normalize_coverage_pe
 
 ##################### Dataset information #####################
 # Make sure to only combine datasets with the same window and binsize
-datasets = ['Btheta_3200_1600_gene_norm', 'Diet1_3200_1600_gene_norm', 'Diet2_3200_1600_gene_norm','Paraquat_3200_1600_gene_norm']
-combined_dataset_name = "3200_1600_gene_norm"
+datasets = ['Btheta_3200_1600_TU_norm', 'Diet1_3200_1600_TU_norm', 'Diet2_3200_1600_TU_norm','Paraquat_3200_1600_TU_norm']
+combined_dataset_name = "3200_1600_TU_norm"
 window_size = 3200
 overlap_size = 1600
 ###############################################################

@@ -1,6 +1,4 @@
 import tensorflow as tf
-from tensorflow.keras.layers import Layer
-from tensorflow.keras import backend as K
 import scipy
 import numpy
 from scipy.stats import pearsonr
@@ -10,6 +8,8 @@ import pandas as pd
 from tensorflow.keras.callbacks import Callback
 from scipy.signal import find_peaks
 import numpy as np
+from tensorflow.keras.layers import Layer, Dense, Flatten, Activation, RepeatVector, Permute, Multiply, Lambda
+import tensorflow.keras.backend as K
 
 # Pooling layer that applies max pooling on all channels and max pooling of the absolute values on the last channel (contains -1/1 values)
 class CustomPooling(tf.keras.layers.Layer):
@@ -66,27 +66,34 @@ def custom_loss_with_l1(y_true, y_pred):
 
     return combined_loss
 
-# Attention mechanism that applies softmax on the dot product of the activation map and a learnable key vector  
-class AttentionMechanism(Layer):
-    def __init__(self, **kwargs):
-        super(AttentionMechanism, self).__init__(**kwargs)
+
+
+
+class Attention(Layer):
+    def __init__(self, return_sequences=True):
+        super(Attention, self).__init__()
+        self.return_sequences = return_sequences
 
     def build(self, input_shape):
-        self.key_vector = self.add_weight(name='key_vector',
-                                          shape=(input_shape[2], 1),
-                                          initializer='uniform',
-                                          trainable=True)
-        super(AttentionMechanism, self).build(input_shape)
+        self.W = self.add_weight(name="att_weight", shape=(input_shape[-1], 1),
+                                 initializer="normal")
+        self.b = self.add_weight(name="att_bias", shape=(input_shape[1], 1),
+                                 initializer="zeros")
+        super(Attention, self).build(input_shape)
 
-    def call(self, activation_map):
-        # Dot product with key vector and apply softmax
-        attention_weights = tf.nn.softmax(tf.matmul(activation_map, self.key_vector), axis=1)
-        # Scale activation map
-        scaled_activation_map = activation_map * attention_weights
-        return scaled_activation_map
+    def call(self, x):
+        e = K.tanh(K.dot(x, self.W) + self.b)
+        a = K.softmax(e, axis=1)
+        output = x * a
+        if self.return_sequences:
+            return output
+        else:
+            return K.sum(output, axis=1)
 
-    def compute_output_shape(self, input_shape):
-        return input_shape
+    def get_config(self):
+        config = super(Attention, self).get_config()
+        config.update({"return_sequences": self.return_sequences})
+        return config
 
 
 # Custom poisson loss function that avoids NaNs and Infs
