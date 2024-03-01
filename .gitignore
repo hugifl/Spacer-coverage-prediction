@@ -3,3 +3,6 @@ test*
 
 # SLURM outputs
 slurm*
+
+# snakemake outputs
+.snakemake*
