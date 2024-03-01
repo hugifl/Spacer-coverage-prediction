@@ -1,0 +1,5 @@
+Building DAG of jobs...
+MissingInputException in line 108 of /cluster/home/hugifl/spacer_coverage_prediction/Snakefile:
+Missing input files for rule all:
+/cluster/scratch/hugifl/spacer_coverage_final_data_2/Diet1_Transcriptional_Units_TU_norm_V2_data/TU_coverage_data_summed_TU_removed.txt
+/cluster/scratch/hugifl/spacer_coverage_final_data_2/Diet1_Transcriptional_Units_TU_norm_V2_data/TU_spacer_counts.csv

@@ -20,7 +20,6 @@ def filter_annotation_features(X_train_anno, X_test_anno, annotation_features_to
     'TU_reverse_body_cummul': 9
     }
 
-
     indices_to_keep = [feature_index_map[feature] for feature in annotation_features_to_use]
 
     X_train_anno_filtered = X_train_anno[..., indices_to_keep]
@@ -102,3 +101,27 @@ def plot_profiles_with_peaks(observed, predicted, index, model_name, outdir, dat
     predicted_filename = f'{index}_predicted_peaks_{model_name}.png'
     plt.savefig(os.path.join(peak_plots_dir, predicted_filename))
     plt.close()
+
+def custom_batch_generator(X_seq, X_anno, Y, batch_size=32):
+    # Assuming Y[:, 0:2] contains the Start and End indices for TUs
+    TU_lengths = Y[:, 1] - Y[:, 0]  # Calculate actual lengths of TUs
+    
+    # Sort TUs by length for batching
+    sorted_indices = np.argsort(TU_lengths)
+    X_seq_sorted = X_seq[sorted_indices]
+    X_anno_sorted = X_anno[sorted_indices]
+    Y_sorted = Y[sorted_indices]
+    
+    # Generate batches
+    for start_idx in range(0, len(Y_sorted), batch_size):
+        end_idx = min(start_idx + batch_size, len(Y_sorted))
+        batch_seq = X_seq_sorted[start_idx:end_idx]
+        batch_anno = X_anno_sorted[start_idx:end_idx]
+        batch_Y = Y_sorted[start_idx:end_idx]
+        
+        # Trim each TU in the batch to the length of the longest TU
+        max_length = max(batch_Y[:, 1] - batch_Y[:, 0])
+        batch_seq_trimmed = batch_seq[:, :max_length, :]
+        batch_anno_trimmed = batch_anno[:, :max_length, :]
+        
+        yield batch_seq_trimmed, batch_anno_trimmed, batch_Y

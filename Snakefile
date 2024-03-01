@@ -13,6 +13,7 @@ import csv
 configfile: "config.yml"
 
 DATASET = str(config['dataset_name'])
+DATASET_TYPE = str(config['dataset_type'])
 WINDOW_SIZE = int(config['window_size'])
 WINDOW_OVERLAP = int(config['window_overlap'])
 GENOME_LENGTH = int(config['genome_length'])
@@ -24,6 +25,7 @@ BAMFILE_START = str(config['bamfile_start'])
 READS_PER_EXPERIMENT = str(config['reads_per_experiment'])
 NORMALIZATION_UNIT = str(config['normalization_unit'])
 REFERENCE_GENOME = str(config['reference_genome'])
+PAD_symbol = str(config['pad_symbol'])
 
 INPUTS_ANNOTATION = config['input_directory_annotation']
 INPUTS_READS = config['input_directory_reads']
@@ -49,54 +51,109 @@ DATA_OUTPUTS = os.path.join(DATA_OUTDIR, DATASET+"_data/")
 if not os.path.exists(OUTPUTS):
     os.makedirs(OUTPUTS)
 
+if DATASET_TYPE == 'window':
+    print('BAM files', BAM_FILES)
+    rule all:
+        input:
+            os.path.join(DATA_OUTPUTS, 'window_coverage_data_summed.csv'),
+            os.path.join(DATA_OUTPUTS,'XY_data_Y_with_windows.npz'), 
+            os.path.join(DATA_OUTPUTS,'train_test_data_normalized_windows_info_.npz'), 
+            os.path.join(DATA_OUTPUTS, 'gene_spacer_counts.csv'),
+            os.path.join(DATA_OUTPUTS, 'tot_number_aligned_reads.txt')
 
-rule all:
-    input:
-        os.path.join(DATA_OUTPUTS, 'window_coverage_data_summed.csv'),
-        os.path.join(DATA_OUTPUTS,'XY_data_Y_with_windows.npz'), 
-        os.path.join(DATA_OUTPUTS,'train_test_data_normalized_windows_info_.npz'), 
-        os.path.join(DATA_OUTPUTS, 'gene_spacer_counts.csv'),
-        os.path.join(DATA_OUTPUTS, 'tot_number_aligned_reads.txt')
-        
-rule spacer_coverage_data_prep:
-    input:
-        BAM_FILES = BAM_FILES
-    output:
-        os.path.join(DATA_OUTPUTS, 'window_coverage_data_summed.csv'),
-        os.path.join(DATA_OUTPUTS, 'gene_spacer_counts.csv'),
-        os.path.join(DATA_OUTPUTS, 'tot_number_aligned_reads.txt')
+    rule spacer_coverage_data_prep:
+        input:
+            BAM_FILES = BAM_FILES
+        output:
+            os.path.join(DATA_OUTPUTS, 'window_coverage_data_summed.csv'),
+            os.path.join(DATA_OUTPUTS, 'gene_spacer_counts.csv'),
+            os.path.join(DATA_OUTPUTS, 'tot_number_aligned_reads.txt')
 
-    run:
-        shell('python spacer_coverage_data_prep.py \
-                    --inbamlist {BAM_FILES} \
-                    --genes {INPUTS_ANNOTATION}{GENES} --TUs {INPUTS_ANNOTATION}{TUs} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
-                    --count_matrix {INPUTS_ANNOTATION}{COUNTS} --batchsize {BATCHSIZE} --binsize {BINSIZE} --genomelen {GENOME_LENGTH} \
-                    --overlap {WINDOW_OVERLAP} --mincount {MINCOUNT} --geneperc {GENE_PERC} --bamfile_start {BAMFILE_START} --readsperexp {READS_PER_EXPERIMENT} \
-                    --normalization_unit {NORMALIZATION_UNIT} --reference_genome {REFERENCE_GENOME}')
-
-
-rule sequence_data_prep:
-    input:
-        os.path.join(DATA_OUTPUTS,'window_coverage_data_summed.csv')
-    output:
-        os.path.join(DATA_OUTPUTS,'XY_data_Y_with_windows.npz')
-
-    run:
-        shell('python sequence_data_prep.py \
-                    --promoters {INPUTS_ANNOTATION}{PROMOTERS} --terminators {INPUTS_ANNOTATION}{TERMINATORS} \
-                    --genes {INPUTS_ANNOTATION}{GENES} --TUs {INPUTS_ANNOTATION}{TUs} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
-                    --genomelen {GENOME_LENGTH} --genome {INPUTS_ANNOTATION}{GENOME} \
-                    --overlap {WINDOW_OVERLAP} --coverage_df {input}')
+        run:
+            shell('python spacer_coverage_data_prep.py \
+                        --inbamlist {BAM_FILES} \
+                        --genes {INPUTS_ANNOTATION}{GENES} --TUs {INPUTS_ANNOTATION}{TUs} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
+                        --count_matrix {INPUTS_ANNOTATION}{COUNTS} --batchsize {BATCHSIZE} --binsize {BINSIZE} --genomelen {GENOME_LENGTH} \
+                        --overlap {WINDOW_OVERLAP} --mincount {MINCOUNT} --geneperc {GENE_PERC} --bamfile_start {BAMFILE_START} --readsperexp {READS_PER_EXPERIMENT} \
+                        --normalization_unit {NORMALIZATION_UNIT} --reference_genome {REFERENCE_GENOME}')
 
 
+    rule sequence_data_prep:
+        input:
+            os.path.join(DATA_OUTPUTS,'window_coverage_data_summed.csv')
+        output:
+            os.path.join(DATA_OUTPUTS,'XY_data_Y_with_windows.npz')
 
-rule prepare_train_test_data:
-    input:
-        os.path.join(DATA_OUTPUTS,'XY_data_Y_with_windows.npz') 
-    output:
-        os.path.join(DATA_OUTPUTS,'train_test_data_normalized_windows_info_.npz') 
+        run:
+            shell('python sequence_data_prep.py \
+                        --promoters {INPUTS_ANNOTATION}{PROMOTERS} --terminators {INPUTS_ANNOTATION}{TERMINATORS} \
+                        --genes {INPUTS_ANNOTATION}{GENES} --TUs {INPUTS_ANNOTATION}{TUs} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
+                        --genomelen {GENOME_LENGTH} --genome {INPUTS_ANNOTATION}{GENOME} \
+                        --overlap {WINDOW_OVERLAP} --coverage_df {input}')
 
 
-    run:
-        shell('python prepare_train_test_data.py --counts {DATA_OUTPUTS}gene_spacer_counts.csv --outPath {DATA_OUTPUTS} --overlap {WINDOW_OVERLAP} \
-                    --winwidth {WINDOW_SIZE} --binsize {BINSIZE}')
+
+    rule prepare_train_test_data:
+        input:
+            os.path.join(DATA_OUTPUTS,'XY_data_Y_with_windows.npz') 
+        output:
+            os.path.join(DATA_OUTPUTS,'train_test_data_normalized_windows_info_.npz') 
+
+
+        run:
+            shell('python prepare_train_test_data.py --counts {DATA_OUTPUTS}gene_spacer_counts.csv --outPath {DATA_OUTPUTS} --overlap {WINDOW_OVERLAP} \
+                        --winwidth {WINDOW_SIZE} --binsize {BINSIZE}')
+
+elif DATASET_TYPE == 'TU':
+    rule all:
+        input:
+            os.path.join(DATA_OUTPUTS, 'TU_coverage_data_summed.csv'),
+            os.path.join(DATA_OUTPUTS,'XY_data_Y_with_windows.npz'), 
+            os.path.join(DATA_OUTPUTS,'train_test_data_normalized_windows_info_.npz'), 
+            os.path.join(DATA_OUTPUTS, 'TU_spacer_counts.csv'),
+            os.path.join(DATA_OUTPUTS, 'tot_number_aligned_reads.txt'),
+            os.path.join(DATA_OUTPUTS, 'TU_coverage_data_summed_TU_removed.csv')
+            
+    rule spacer_coverage_data_prep:
+        input:
+            BAM_FILES = BAM_FILES
+        output:
+            os.path.join(DATA_OUTPUTS, 'TU_coverage_data_summed.csv'), 
+            os.path.join(DATA_OUTPUTS, 'TU_spacer_counts.csv'),
+            os.path.join(DATA_OUTPUTS, 'tot_number_aligned_reads.txt'),
+            os.path.join(DATA_OUTPUTS, 'TU_coverage_data_summed_TU_removed.csv') 
+    
+        run:
+            shell('python spacer_coverage_data_prep_TU.py \
+                        --inbamlist {BAM_FILES} --padsymbol {PAD_symbol}\
+                        --genes {INPUTS_ANNOTATION}{GENES} --TUs {INPUTS_ANNOTATION}{TUs} --outPath {DATA_OUTPUTS} \
+                        --count_matrix {INPUTS_ANNOTATION}{COUNTS} --batchsize {BATCHSIZE} --binsize {BINSIZE} --genomelen {GENOME_LENGTH} \
+                        --mincount {MINCOUNT} --geneperc {GENE_PERC} --bamfile_start {BAMFILE_START} --readsperexp {READS_PER_EXPERIMENT} \
+                        --normalization_unit {NORMALIZATION_UNIT} --reference_genome {REFERENCE_GENOME}')
+    
+    
+    rule sequence_data_prep:
+        input:
+            os.path.join(DATA_OUTPUTS,'TU_coverage_data_summed_TU_removed.csv') #TU_coverage_data_summed
+        output:
+            os.path.join(DATA_OUTPUTS,'XY_data_Y_with_windows.npz')
+    
+        run:
+            shell('python sequence_data_prep_TU.py \
+                        --promoters {INPUTS_ANNOTATION}{PROMOTERS} --terminators {INPUTS_ANNOTATION}{TERMINATORS} \
+                        --genes {INPUTS_ANNOTATION}{GENES} --TUs {INPUTS_ANNOTATION}{TUs} --outPath {DATA_OUTPUTS} --winwidth {WINDOW_SIZE} \
+                        --genomelen {GENOME_LENGTH} --genome {INPUTS_ANNOTATION}{GENOME} \
+                        --overlap {WINDOW_OVERLAP} --coverage_df {input} --padsymbol {PAD_symbol}')
+    
+    
+    
+    rule prepare_train_test_data:
+        input:
+            os.path.join(DATA_OUTPUTS,'XY_data_Y_with_windows.npz') 
+        output:
+            os.path.join(DATA_OUTPUTS,'train_test_data_normalized_windows_info_.npz') 
+    
+    
+        run:
+            shell('python prepare_train_test_data.py --counts {DATA_OUTPUTS}gene_spacer_counts.csv --outPath {DATA_OUTPUTS} --overlap {WINDOW_OVERLAP} \
+                        --winwidth {WINDOW_SIZE} --binsize {BINSIZE}')

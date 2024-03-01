@@ -12,8 +12,8 @@ no_plots = 40
 no_bin = 3200
 binsize = 1
 dataset_name = '3200_1600_gene_norm'
-model_to_load = 'CNN_biLSTM_10'
-model_name = 'CNN_biLSTM_10'
+model_to_load = 'CNN_biLSTM_17'
+model_name = 'CNN_biLSTM_17'
 coverage_scaling_factor = 1
 annotation_features_to_use = ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector']
 ###############################################################
@@ -89,7 +89,6 @@ X_test_anno = X_test_filtered[:, :, 4:] # Annotation data
 # Filter the annotation arrays
 X_train_anno, X_test_anno = filter_annotation_features(X_train_anno, X_test_anno, annotation_features_to_use)
 
-print("head of Y_test_filtered", Y_test_filtered[:10, :5])
 
-#plots = plot_predicted_vs_observed(loaded_model, model_name, X_test_seq, X_test_anno, Y_test_filtered, no_plots, no_bin, outdir, dataset_name, window_size, promoter_df, terminator_df, gene_df, binsize, log_scale = False)
-#print(plots)
+plots = plot_predicted_vs_observed(loaded_model, model_name, X_test_seq, X_test_anno, Y_test_filtered, no_plots, no_bin, outdir, dataset_name, window_size, promoter_df, terminator_df, gene_df, binsize, log_scale = False)
+print(plots)

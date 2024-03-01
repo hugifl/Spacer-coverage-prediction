@@ -4,6 +4,7 @@ from keras.initializers import HeNormal
 from tensorflow.keras.layers import Conv1D, ELU, BatchNormalization, AveragePooling1D, AdditiveAttention,  concatenate, MultiHeadAttention, LayerNormalization,  Input, Conv1D, Dropout, Bidirectional, LSTM, concatenate, Dense, Flatten, Activation, RepeatVector, Permute, Multiply, Lambda, Layer
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import concatenate
+from tensorflow.keras.layers import Masking
 
 Model = tf.keras.models.Model
 Conv1D = tf.keras.layers.Conv1D
@@ -501,6 +502,73 @@ class CNN_biLSTM_CustomAttention_2(Model):
 
         return self.final_conv(attention_output)
     
+
+class CNN_biLSTM_1_Masking(Model):
+    def __init__(self, CNN_num_layers_seq, CNN_num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, biLSTM_num_layers_seq, biLSTM_num_layers_anno, unit_numbers_seq, unit_numbers_anno, unit_numbers_combined, only_seq, pad_symbol):
+        super(CNN_biLSTM_1, self).__init__()
+
+        assert len(filter_number_seq) >= CNN_num_layers_seq and len(kernel_size_seq) >= CNN_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(filter_number_anno) >= CNN_num_layers_anno and len(kernel_size_anno) >= CNN_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        assert len(unit_numbers_seq) >= biLSTM_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(unit_numbers_anno) >= biLSTM_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        # DNA sequence stream CNN layers
+        self.seq_layers_CNN = [Conv1D(filters=filter_number_seq[i], kernel_size=kernel_size_seq[i], padding='same', activation='relu') for i in range(CNN_num_layers_seq)]
+        self.drop_seq = Dropout(0.2)
+        self.seq_masking_layer = Masking(mask_value=pad_symbol)
+        
+
+        self.only_seq = only_seq  
+        self.unit_numbers_combined = unit_numbers_combined
+
+        if not only_seq:
+            # Gene/operon annotation stream CNN layers
+            self.anno_masking_layer = Masking(mask_value=pad_symbol)
+            self.anno_layers_CNN = [Conv1D(filters=filter_number_anno[i], kernel_size=kernel_size_anno[i], padding='same', activation='relu') for i in range(CNN_num_layers_anno)]
+            self.drop_anno = Dropout(0.2)
+
+        # DNA sequence stream biLSTM layers
+        self.seq_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_seq[i], return_sequences=True)) for i in range(biLSTM_num_layers_seq)]
+
+        if not only_seq:
+            self.anno_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_anno[i], return_sequences=True)) for i in range(biLSTM_num_layers_anno)]
+
+        # Shared layers
+        if unit_numbers_combined != 0:
+            self.final_biLSTM = Bidirectional(LSTM(unit_numbers_combined, return_sequences=True))
+        self.final_conv = Conv1D(filters=1, kernel_size=1, activation='relu', padding='same')
+
+    def call(self, inputs):
+        inputs_seq, inputs_anno = inputs
+
+        # DNA sequence stream
+        x_seq = inputs_seq
+        x_seq = self.seq_masking_layer(x_seq)
+        for layer in self.seq_layers_CNN:
+            x_seq = layer(x_seq)
+        
+        for layer in self.seq_layers_biLSTM:
+            x_seq = layer(x_seq)  
+        x_seq = self.drop_seq(x_seq)
+
+        if not self.only_seq:
+            # Gene/operon annotation stream
+            x_anno = inputs_anno
+            x_anno = self.anno_masking_layer(x_anno)
+            for layer in self.anno_layers_CNN:
+                x_anno = layer(x_anno)
+            for layer in self.anno_layers_biLSTM:
+                x_anno = layer(x_anno)  
+            x_anno = self.drop_anno(x_anno)
+            combined = concatenate([x_seq, x_anno])
+        else:
+            combined = x_seq
+
+        # Shared layers
+        if self.unit_numbers_combined != 0:
+            combined = self.final_biLSTM(combined)
+        return self.final_conv(combined)
 
 ############################################### COVERAGE AS PROBABILITY APPROACH ###############################################
     

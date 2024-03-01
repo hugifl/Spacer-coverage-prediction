@@ -54,6 +54,7 @@ def filter_bamlist(bamlist, counts_df, mincount, bamfile_start):
 
     # Filter the bamlist to include only those BAM files that are in filtered_bamlist
     filtered_bamlist_final = [bam for bam in bamlist if bam in filtered_bamlist]
+    counts_df.reset_index(drop=True, inplace=True)
 
     # Return the filtered list and the updated counts_df
     return filtered_bamlist_final, counts_df
@@ -92,6 +93,10 @@ def total_count_per_bam(counts_df, bamfile_start):
 #    sorted_genes = sorted(gene_dict, key=lambda k: gene_dict[k])
 #    number_to_be_dropped = int(len(sorted_genes) * (gene_perc / 100))
 #    return sorted_genes[:number_to_be_dropped]
+def remove_lowest_expressed_TUs(count_df, lowest_expressed_TUs):
+    adjusted_count_df = count_df[~count_df['TU_Name'].isin(lowest_expressed_TUs)]
+    adjusted_count_df.reset_index(drop=True, inplace=True)
+    return adjusted_count_df
 
 def filter_windows(windows_coverage_df, filtered_genes, gene_df):
 
@@ -175,6 +180,66 @@ def process_batch(bam_batch, windows, reference_genome, binsize, bam_directory):
     batch_coverage_columns = ['Window_Start', 'Window_End'] + [f'Pos_{i}' for i in range(num_bins)]
     batch_coverage_df = pd.DataFrame(batch_coverage_list, columns=batch_coverage_columns)
     return batch_coverage_df, aligned_read_count, window_aligned_read_count, total_read_count
+
+def process_batch_TU(bam_batch, count_df, reference_genome, bam_directory, pad_symbol):
+    pad_symbol = float(pad_symbol)
+    # Determine the length of the longest TU
+    max_length = count_df['Length'].max()
+    aligned_read_count = 0
+    TU_aligned_read_count = 0
+    total_read_count = 0
+
+    # Initialize list to store TU coverage data
+    tu_coverage_list = []
+
+    for bam_file in bam_batch:
+        bam_file_full = bam_directory + bam_file
+        bamfile = HTSeq.BAM_Reader(bam_file_full)
+
+        for almnt in bamfile:
+            total_read_count += 1
+            if almnt.aligned:
+                aligned_read_count += 1
+
+        for _, row in count_df.iterrows():
+            tu_name = row['Geneid']
+            start = int(row['Start'])
+            end = int(row['End'])
+            direction = row['Strand']
+
+            # Define genomic interval for the TU
+            tu_iv = HTSeq.GenomicInterval(reference_genome, start, end, ".")
+
+            # Create a GenomicArray for coverage calculation
+            coverage = HTSeq.GenomicArray("auto", stranded=False, typecode="i")
+            
+            # Fetch alignments and calculate coverage
+            for almnt in bamfile.fetch(reference_genome, start, end):
+                if almnt.aligned:
+                    coverage[almnt.iv] += 1
+                    TU_aligned_read_count += 1
+            
+            # Extract coverage array for the TU
+            coverage_array = numpy.fromiter(coverage[tu_iv], dtype='i', count=end - start)
+            coverage_array = coverage_array.astype(float) 
+
+            # Reverse the coverage array if the TU is in '-' direction
+            if direction == '-':
+                coverage_array = coverage_array[::-1]
+            
+            # Pad the coverage array for shorter TUs
+            padded_coverage_array = numpy.pad(coverage_array, (0, max_length - len(coverage_array)), 'constant', constant_values=pad_symbol)
+
+            # Add TU coverage data to the list
+            tu_coverage_list.append([tu_name, start, end, direction] + padded_coverage_array.tolist())
+
+    # Define DataFrame columns
+    coverage_columns = ['TU_Name', 'Start', 'End', 'Direction'] + [f'Pos_{i}' for i in range(max_length)]
+    
+    # Convert list to DataFrame
+    tu_coverage_df = pd.DataFrame(tu_coverage_list, columns=coverage_columns)
+    print("head of tu coverage df: ", tu_coverage_df.head())
+    return tu_coverage_df, aligned_read_count, TU_aligned_read_count, total_read_count
 
 def define_peaks(coverage_data, local_threshold=0.3, global_threshold=0.001, window_info= False):
     if not window_info:
@@ -325,6 +390,7 @@ def get_normalized_spacer_counts_per_TU(counts_df, TU_perc, count_dict):
     normalized_TU_spacer_counts_df.rename(columns={'index': 'TU_Name'}, inplace=True)
     return sorted_TUs[:number_to_be_dropped], normalized_TU_spacer_counts_df
 
+
 def normalize_coverage_per_gene(coverage_data, gene_spacer_counts_df, no_bin, binsize): 
     normalized_coverage_data = coverage_data.copy()
     #windows_to_delete = [] # If there is some window that isn't covered by any gene, it is deleted.
@@ -401,6 +467,50 @@ def normalize_coverage_per_gene(coverage_data, gene_spacer_counts_df, no_bin, bi
 
     return normalized_coverage_data
 
+def normalize_TU_coverage_per_TU(coverage_data, TU_spacer_counts_df, pad_symbol):
+    # Initialize a normalized coverage DataFrame
+    normalized_coverage_data = coverage_data.copy()
+    
+    # Preprocess to create a lookup for spacer counts by TU_Name
+    spacer_count_lookup = TU_spacer_counts_df.set_index('TU_Name')['spacer_count'].to_dict()
+    
+    # Iterate through each row in the coverage DataFrame
+    for index, row in normalized_coverage_data.iterrows():
+        # Initialize normalization_factors with the spacer_count of the current TU
+        tu_length = row['End'] - row['Start']
+        current_spacer_count = spacer_count_lookup[row['TU_Name']]
+        normalization_factors = numpy.full(tu_length, current_spacer_count)
+        
+        # Adjust normalization_factors for overlaps
+        for _, other_row in TU_spacer_counts_df.iterrows():
+            # Skip the current TU
+            if other_row['TU_Name'] == row['TU_Name']:
+                continue
+            
+            # Check for overlap and adjust normalization_factors accordingly
+            overlap_start = max(row['Start'], other_row['start'])
+            overlap_end = min(row['End'], other_row['end'])
+            
+            if overlap_start < overlap_end:  # There's an overlap
+                other_spacer_count = spacer_count_lookup[other_row['TU_Name']]
+               
+                # Update normalization_factors for the overlap region
+                normalization_factors[overlap_start - row['Start']:overlap_end - row['Start']] += other_spacer_count
+
+        if row['Direction'] == '-':
+                    normalization_factors = normalization_factors[::-1]
+        
+        # Normalize coverage data using normalization_factors
+        for pos_index, col_name in enumerate(row.index[row.index.str.startswith('Pos_')]):
+            if row[col_name] == pad_symbol:
+                break  # Stop normalizing when pad_symbol is encountered
+            
+            if pos_index < len(normalization_factors):  
+                normalized_value = row[col_name] / normalization_factors[pos_index]
+                normalized_coverage_data.at[index, col_name] = normalized_value
+    
+    return normalized_coverage_data
+
 def normalize_coverage_per_TU(coverage_data, TU_spacer_counts_df, no_bin, binsize):        
     normalized_coverage_data = coverage_data.copy()
     #windows_to_delete = [] # If there is some window that isn't covered by any gene, it is deleted.
@@ -453,7 +563,35 @@ def normalize_coverage_for_tot_aligned_reads_old(coverage_df, library_size, expe
     
     return coverage_df_normalized
 
+def normalize_coverage_for_tot_aligned_reads_TU(coverage_data, library_size, expected_aligned_reads_per_library):
+    normalization_factor = float(expected_aligned_reads_per_library / library_size)
+    coverage_normalized = coverage_data.copy()
+    ncols = coverage_normalized.shape[1]
+    print("ncols: " + str(ncols))
+    # Iterate through each row to apply normalization
+    for index, row in coverage_normalized.iterrows():
+        # Calculate the length from 'Start' and 'End'
+        length = row['End'] - row['Start']
+        print("length: " + str(length))
         
+        # Columns to be normalized start at index 5 and end at index 5 + length
+        start_col_index = 4
+        end_col_index = start_col_index + length - 1
+        # Apply normalization for the specified range
+        # Ensure the range does not exceed the DataFrame's column limits
+        print("end_col_index before: " + str(end_col_index))
+        end_col_index = min(end_col_index, coverage_normalized.shape[1])
+        # Normalize the coverage data for the relevant columns
+        print("start_col_index: " + str(start_col_index))
+        print("end_col_index after: " + str(end_col_index))
+        print("TU length: " + str(length))
+        print("TU name: " + str(row['TU_Name']))
+        print("length of row: " + str(len(row)))
+        print("start of row: " + str(row[:40]))
+        coverage_normalized.iloc[index, start_col_index:end_col_index] = coverage_normalized.iloc[index, start_col_index:end_col_index] * normalization_factor
+    return coverage_normalized
+
+
 
 def normalize_coverage_for_tot_aligned_reads(coverage_data, library_size, expected_aligned_reads_per_library):
     # Check if the input is a pandas DataFrame
@@ -525,3 +663,21 @@ def expand_count_df(counts_df, OUTDIR = False):
         expanded_df.to_csv(f"{OUTDIR}/expanded_counts.csv", index=False)
 
     return expanded_df
+
+
+
+def replace_summed_pads(df, pad_symbol):
+    df_padded = df.copy()
+    total_coverage_cols = df_padded.shape[1] - 2  
+    for index, row in df_padded.iterrows():
+        tu_length = row['End'] - row['Start']
+   
+        pad_start_index = 2 + tu_length  # Adjusting for 'Start' and 'End' columns
+        
+        if pad_start_index < total_coverage_cols:
+            pad_start_index = int(numpy.clip(pad_start_index, 0, total_coverage_cols))
+            
+            # Replace values beyond the TU length with pad_symbol
+            df_padded.iloc[index, pad_start_index:] = pad_symbol
+            
+    return df_padded

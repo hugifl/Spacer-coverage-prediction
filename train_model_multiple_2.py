@@ -23,93 +23,33 @@ batch_size = 64
 dataset_name = '3200_1600_gene_norm'
 
 
+
+
+
 model_configurations = {
-    'CNN_biLSTM_CustomAttention_1_4': {
-        'architecture': CNN_biLSTM_CustomAttention,
-        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
+    'CNN_biLSTM_17_3': {
+        'architecture': CNN_biLSTM_1,
+        'features': ['gene_vector', 'promoter_vector', 'gene_directionality_vector'], #,'TU_forward_start_end', 'TU_reverse_start_end', 'TU_forward_body', 'TU_reverse_body'
         'epochs': 50,
         'learning_rate': 0.005,
         'CNN_num_layers_seq': 2,
         'CNN_num_layers_anno': 2,
-        'filter_number_seq': [100,100],
-        'filter_number_anno': [100,100],
-        'kernel_size_seq': [5,5],
-        'kernel_size_anno': [5,5],
+        'filter_number_seq': [50,100],
+        'filter_number_anno': [50,100],
+        'kernel_size_seq': [3,3],
+        'kernel_size_anno': [3,3],
         'biLSTM_num_layers_seq': 1,
         'biLSTM_num_layers_anno': 1,
-        'unit_numbers_seq': [32],
-        'unit_numbers_anno': [12],
-        'unit_numbers_combined': 32,
+        'unit_numbers_seq': [24],
+        'unit_numbers_anno': [24],
+        'unit_numbers_combined': 8,
         'only_seq': False
     }
 }
 
-#model_configurations = {
-#    
-#    'biLSTM_4': {
-#        'architecture': biLSTM,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
-#        'epochs': 50,
-#        'learning_rate': 0.005,
-#        'num_layers_seq': 1,
-#        'num_layers_anno': 1,
-#        'unit_numbers_seq': [32],
-#        'unit_numbers_anno': [32],
-#        'only_seq': False
-#    },
-#    
-#    'biLSTM_1': {
-#        'architecture': biLSTM,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
-#        'epochs': 50,
-#        'learning_rate': 0.005,
-#        'num_layers_seq': 1,
-#        'num_layers_anno': 1,
-#        'unit_numbers_seq': [32],
-#        'unit_numbers_anno': [32],
-#        'only_seq': True
-#    },
-#    
-#    'biLSTM_5': {
-#        'architecture': biLSTM,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
-#        'epochs': 50,
-#        'learning_rate': 0.005,
-#        'num_layers_seq': 2,
-#        'num_layers_anno': 2,
-#        'unit_numbers_seq': [32,32],
-#        'unit_numbers_anno': [32,32],
-#        'only_seq': False
-#    },
-#    'biLSTM_2': {
-#        'architecture': biLSTM,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
-#        'epochs': 50,
-#        'learning_rate': 0.005,
-#        'num_layers_seq': 2,
-#        'num_layers_anno': 2,
-#        'unit_numbers_seq': [32,32],
-#        'unit_numbers_anno': [32,32],
-#        'only_seq': True
-#    }
-#}
 
-#model_configurations = {
-#    
-#    'tetstets': {
-#        'architecture': CNN,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
-#        'epochs': 16,
-#        'learning_rate': 0.001,
-#        'num_layers_seq': 1,
-#        'num_layers_anno': 1,
-#        'filter_number_seq': [50],
-#        'filter_number_anno': [50],
-#        'kernel_size_seq': [3],
-#        'kernel_size_anno': [3],
-#        'only_seq': True
-#    }
-#}
+
+
 
 coverage_scaling_factor = 1
 ###############################################################
@@ -142,23 +82,6 @@ Y_test_filtered = Y_test[~rows_with_nans_or_infs]
 X_test_filtered = X_test[~rows_with_nans_or_infs]
 
 
-# Filter out windows that contain genes with coverage peaks too high (normalization error due to wrong/non-matching coordinates) or too low (low gene expression, noisy profile)
-#indices_to_remove_train = np.where((Y_train_filtered > 200).any(axis=1) | (Y_train_filtered.max(axis=1) < 5))[0]
-##
-### Remove these rows from Y_train and X_train
-#Y_train_filtered = np.delete(Y_train_filtered, indices_to_remove_train, axis=0)
-#X_train_filtered = np.delete(X_train_filtered, indices_to_remove_train, axis=0)
-#
-## Find indices where the maximum value in a row of Y_test exceeds 20 or is below 2
-#indices_to_remove_test = np.where((Y_test_filtered > 200).any(axis=1) | (Y_test_filtered.max(axis=1) < 5))[0]
-##
-### Remove these rows from Y_test and X_test
-#Y_test_filtered = np.delete(Y_test_filtered, indices_to_remove_test, axis=0)
-#X_test_filtered = np.delete(X_test_filtered, indices_to_remove_test, axis=0)
-
-#Y_train_binarized = (Y_train_filtered > 2).astype(int)
-#Y_test_binarized = (Y_test_filtered > 2).astype(int)
-
 for model_name, config in model_configurations.items():
     
     checkpoint_dir = os.path.join(outdir, dataset_name + "_outputs", "checkpoints", model_name)
@@ -174,7 +97,7 @@ for model_name, config in model_configurations.items():
     X_test_anno = X_test_filtered[:, :, 4:] # Annotation data
 
     # Filter the annotation arrays
-    X_train_anno, X_test_anno = filter_annotation_features(X_train_anno, X_test_anno, config['features'])
+    X_train_anno_filtered, X_test_anno_filtered = filter_annotation_features(X_train_anno, X_test_anno, config['features'])
     
     early_stopping = EarlyStopping(
     monitor='val_loss',  
@@ -186,8 +109,8 @@ for model_name, config in model_configurations.items():
     
     nan_checker = NaNChecker()
     optimizer = tf.keras.optimizers.Adam(learning_rate=config['learning_rate'])
-    pearson_callback = PearsonCorrelationCallback(X_train_seq, X_train_anno, Y_train_filtered, batch_size=batch_size, use_log=True, plot=False)
-    f1_callback = F1ScoreCallback(X_train_seq, X_train_anno, Y_train_filtered, batch_size=batch_size, width=10, prominence=0.05, overlap_threshold=0.02, data_length=no_bin)
+    pearson_callback = PearsonCorrelationCallback(X_train_seq, X_train_anno_filtered, Y_train_filtered, batch_size=batch_size, use_log=True, plot=False)
+    f1_callback = F1ScoreCallback(X_train_seq, X_train_anno_filtered, Y_train_filtered, batch_size=batch_size, width=10, prominence=0.05, overlap_threshold=0.02, data_length=no_bin)
     
     
     checkpoint_callback = ModelCheckpoint(
@@ -216,29 +139,12 @@ for model_name, config in model_configurations.items():
         only_seq=config['only_seq']
     )
  
-    #model = config['architecture'](
-    #    num_layers_seq=config['num_layers_seq'],
-    #    num_layers_anno=config['num_layers_anno'],
-    #    unit_numbers_seq=config['unit_numbers_seq'],
-    #    unit_numbers_anno=config['unit_numbers_anno'],
-    #    only_seq=config['only_seq']
-    #)
-    #model = config['architecture'](
-    #    num_layers_seq=config['num_layers_seq'],
-    #    num_layers_anno=config['num_layers_anno'],
-    #    filter_number_seq=config['filter_number_seq'],
-    #    filter_number_anno=config['filter_number_anno'],
-    #    kernel_size_seq=config['kernel_size_seq'],
-    #    kernel_size_anno=config['kernel_size_anno'],
-    #    only_seq=config['only_seq']
-    #)
     
     optimizer = tf.keras.optimizers.Adam(learning_rate=config['learning_rate'])
     model.compile(optimizer=optimizer, loss=poisson_loss, run_eagerly=True)
     
     # Filter annotation features based on model configuration
     annotation_features_to_use = config['features']
-    X_train_anno_filtered, X_test_anno_filtered = filter_annotation_features(X_train_anno, X_test_anno, annotation_features_to_use)
 
     latest_checkpoint = max(glob.glob(os.path.join(checkpoint_dir, "model_epoch_*")), key=os.path.getctime, default=None)
 
@@ -268,10 +174,10 @@ for model_name, config in model_configurations.items():
         callbacks=callbacks_list
     )
 
-    test_loss = model.evaluate([X_test_seq, X_test_anno], Y_test, verbose=0)
+    test_loss = model.evaluate([X_test_seq, X_test_anno_filtered], Y_test, verbose=0)
 
     # Predict on the test set
-    Y_pred = model.predict([X_test_seq, X_test_anno])
+    Y_pred = model.predict([X_test_seq, X_test_anno_filtered])
 
     # Calculate average Pearson correlation and F1 score using the provided evaluate_model function
     avg_pearson_correlation, avg_f1_score = evaluate_model(Y_test, Y_pred, model_name, outdir, dataset_name, width=10, prominence=0.05, overlap_threshold=0.02)

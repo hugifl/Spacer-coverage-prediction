@@ -23,60 +23,70 @@ batch_size = 64
 dataset_name = '3200_1600_gene_norm'
 
 
+
+
 model_configurations = {
-    'CNN_biLSTM_CustomAttention_1_4': {
-        'architecture': CNN_biLSTM_CustomAttention,
-        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
+    'CNN_biLSTM_17_4': {
+        'architecture': CNN_biLSTM_1,
+        'features': ['gene_vector', 'terminator_vector', 'gene_directionality_vector'], #,'TU_forward_start_end', 'TU_reverse_start_end', 'TU_forward_body', 'TU_reverse_body'
         'epochs': 50,
         'learning_rate': 0.005,
         'CNN_num_layers_seq': 2,
         'CNN_num_layers_anno': 2,
-        'filter_number_seq': [100,100],
-        'filter_number_anno': [100,100],
-        'kernel_size_seq': [5,5],
-        'kernel_size_anno': [5,5],
-        'biLSTM_num_layers_seq': 0,
-        'biLSTM_num_layers_anno': 0,
-        'unit_numbers_seq': [],
-        'unit_numbers_anno': [],
-        'unit_numbers_combined': 64,
-        'only_seq': False
+        'filter_number_seq': [50,100],
+        'filter_number_anno': [50,100],
+        'kernel_size_seq': [3,3],
+        'kernel_size_anno': [3,3],
+        'biLSTM_num_layers_seq': 1,
+        'biLSTM_num_layers_anno': 1,
+        'unit_numbers_seq': [24],
+        'unit_numbers_anno': [24],
+        'unit_numbers_combined': 8,
+        'only_seq': True
     }
 }
+
+
+
 #model_configurations = {
-#    'CNN_biLSTM_13': {
+#    'CNN_biLSTM_18': {
 #        'architecture': CNN_biLSTM_1,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
+#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], #,'TU_forward_start_end', 'TU_reverse_start_end', 'TU_forward_body', 'TU_reverse_body'
 #        'epochs': 50,
 #        'learning_rate': 0.005,
 #        'CNN_num_layers_seq': 2,
 #        'CNN_num_layers_anno': 2,
-#        'filter_number_seq': [100,100],
-#        'filter_number_anno': [100,100],
-#        'kernel_size_seq': [5,5],
-#        'kernel_size_anno': [5,5],
-#        'biLSTM_num_layers_seq': 0,
-#        'biLSTM_num_layers_anno': 0,
-#        'unit_numbers_seq': [],
-#        'unit_numbers_anno': [],
+#        'filter_number_seq': [50,100],
+#        'filter_number_anno': [50,100],
+#        'kernel_size_seq': [2,2],
+#        'kernel_size_anno': [2,2],
+#        'biLSTM_num_layers_seq': 1,
+#        'biLSTM_num_layers_anno': 1,
+#        'unit_numbers_seq': [24],
+#        'unit_numbers_anno': [24],
 #        'unit_numbers_combined': 8,
 #        'only_seq': False
-#    },
-#    'CNN_biLSTM_AddAttention_1': {
-#        'architecture': CNN_biLSTM_AddAttention,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'],
+#    }
+#}
+
+
+
+#model_configurations = {
+#    'CNN_biLSTM_17': {
+#        'architecture': CNN_biLSTM_1,
+#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], #,'TU_forward_start_end', 'TU_reverse_start_end', 'TU_forward_body', 'TU_reverse_body'
 #        'epochs': 50,
 #        'learning_rate': 0.005,
 #        'CNN_num_layers_seq': 2,
 #        'CNN_num_layers_anno': 2,
-#        'filter_number_seq': [100,100],
-#        'filter_number_anno': [100,100],
-#        'kernel_size_seq': [5,5],
-#        'kernel_size_anno': [5,5],
-#        'biLSTM_num_layers_seq': 0,
-#        'biLSTM_num_layers_anno': 0,
-#        'unit_numbers_seq': [],
-#        'unit_numbers_anno': [],
+#        'filter_number_seq': [50,100],
+#        'filter_number_anno': [50,100],
+#        'kernel_size_seq': [3,3],
+#        'kernel_size_anno': [3,3],
+#        'biLSTM_num_layers_seq': 1,
+#        'biLSTM_num_layers_anno': 1,
+#        'unit_numbers_seq': [24],
+#        'unit_numbers_anno': [24],
 #        'unit_numbers_combined': 8,
 #        'only_seq': False
 #    }
@@ -212,7 +222,7 @@ for model_name, config in model_configurations.items():
     X_test_anno = X_test_filtered[:, :, 4:] # Annotation data
 
     # Filter the annotation arrays
-    X_train_anno, X_test_anno = filter_annotation_features(X_train_anno, X_test_anno, config['features'])
+    X_train_anno_filtered, X_test_anno_filtered = filter_annotation_features(X_train_anno, X_test_anno, config['features'])
     
     early_stopping = EarlyStopping(
     monitor='val_loss',  
@@ -224,8 +234,8 @@ for model_name, config in model_configurations.items():
     
     nan_checker = NaNChecker()
     optimizer = tf.keras.optimizers.Adam(learning_rate=config['learning_rate'])
-    pearson_callback = PearsonCorrelationCallback(X_train_seq, X_train_anno, Y_train_filtered, batch_size=batch_size, use_log=True, plot=False)
-    f1_callback = F1ScoreCallback(X_train_seq, X_train_anno, Y_train_filtered, batch_size=batch_size, width=10, prominence=0.05, overlap_threshold=0.02, data_length=no_bin)
+    pearson_callback = PearsonCorrelationCallback(X_train_seq, X_train_anno_filtered, Y_train_filtered, batch_size=batch_size, use_log=True, plot=False)
+    f1_callback = F1ScoreCallback(X_train_seq, X_train_anno_filtered, Y_train_filtered, batch_size=batch_size, width=10, prominence=0.05, overlap_threshold=0.02, data_length=no_bin)
     
     
     checkpoint_callback = ModelCheckpoint(
@@ -254,29 +264,12 @@ for model_name, config in model_configurations.items():
         only_seq=config['only_seq']
     )
  
-    #model = config['architecture'](
-    #    num_layers_seq=config['num_layers_seq'],
-    #    num_layers_anno=config['num_layers_anno'],
-    #    unit_numbers_seq=config['unit_numbers_seq'],
-    #    unit_numbers_anno=config['unit_numbers_anno'],
-    #    only_seq=config['only_seq']
-    #)
-    #model = config['architecture'](
-    #    num_layers_seq=config['num_layers_seq'],
-    #    num_layers_anno=config['num_layers_anno'],
-    #    filter_number_seq=config['filter_number_seq'],
-    #    filter_number_anno=config['filter_number_anno'],
-    #    kernel_size_seq=config['kernel_size_seq'],
-    #    kernel_size_anno=config['kernel_size_anno'],
-    #    only_seq=config['only_seq']
-    #)
     
     optimizer = tf.keras.optimizers.Adam(learning_rate=config['learning_rate'])
     model.compile(optimizer=optimizer, loss=poisson_loss, run_eagerly=True)
     
     # Filter annotation features based on model configuration
     annotation_features_to_use = config['features']
-    X_train_anno_filtered, X_test_anno_filtered = filter_annotation_features(X_train_anno, X_test_anno, annotation_features_to_use)
 
     latest_checkpoint = max(glob.glob(os.path.join(checkpoint_dir, "model_epoch_*")), key=os.path.getctime, default=None)
 
@@ -306,10 +299,10 @@ for model_name, config in model_configurations.items():
         callbacks=callbacks_list
     )
 
-    test_loss = model.evaluate([X_test_seq, X_test_anno], Y_test, verbose=0)
+    test_loss = model.evaluate([X_test_seq, X_test_anno_filtered], Y_test, verbose=0)
 
     # Predict on the test set
-    Y_pred = model.predict([X_test_seq, X_test_anno])
+    Y_pred = model.predict([X_test_seq, X_test_anno_filtered])
 
     # Calculate average Pearson correlation and F1 score using the provided evaluate_model function
     avg_pearson_correlation, avg_f1_score = evaluate_model(Y_test, Y_pred, model_name, outdir, dataset_name, width=10, prominence=0.05, overlap_threshold=0.02)
