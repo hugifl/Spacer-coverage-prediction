@@ -109,18 +109,14 @@ elif DATASET_TYPE == 'TU':
         input:
             os.path.join(DATA_OUTPUTS, 'TU_coverage_data_summed.csv'),
             os.path.join(DATA_OUTPUTS,'XY_data_Y_with_windows.npz'), 
-            os.path.join(DATA_OUTPUTS,'train_test_data_normalized_windows_info_.npz'), 
-            os.path.join(DATA_OUTPUTS, 'TU_spacer_counts.csv'),
-            os.path.join(DATA_OUTPUTS, 'tot_number_aligned_reads.txt'),
+            os.path.join(DATA_OUTPUTS,'train_test_data_normalized_windows_info_.npz'),
             os.path.join(DATA_OUTPUTS, 'TU_coverage_data_summed_TU_removed.csv')
             
     rule spacer_coverage_data_prep:
         input:
             BAM_FILES = BAM_FILES
         output:
-            os.path.join(DATA_OUTPUTS, 'TU_coverage_data_summed.csv'), 
-            os.path.join(DATA_OUTPUTS, 'TU_spacer_counts.csv'),
-            os.path.join(DATA_OUTPUTS, 'tot_number_aligned_reads.txt'),
+            os.path.join(DATA_OUTPUTS, 'TU_coverage_data_summed.csv'),
             os.path.join(DATA_OUTPUTS, 'TU_coverage_data_summed_TU_removed.csv') 
     
         run:
@@ -155,5 +151,5 @@ elif DATASET_TYPE == 'TU':
     
     
         run:
-            shell('python prepare_train_test_data.py --counts {DATA_OUTPUTS}gene_spacer_counts.csv --outPath {DATA_OUTPUTS} --overlap {WINDOW_OVERLAP} \
+            shell('python prepare_train_test_data.py --counts {DATA_OUTPUTS}TU_spacer_counts.csv --outPath {DATA_OUTPUTS} --overlap {WINDOW_OVERLAP} \
                         --winwidth {WINDOW_SIZE} --binsize {BINSIZE}')

@@ -1,5 +1,5 @@
 import tensorflow as tf
-from custom_elements import CustomPooling, Attention
+from custom_elements import CustomPooling, Attention, AttentionLayerTBiNet
 from keras.initializers import HeNormal
 from tensorflow.keras.layers import Conv1D, ELU, BatchNormalization, AveragePooling1D, AdditiveAttention,  concatenate, MultiHeadAttention, LayerNormalization,  Input, Conv1D, Dropout, Bidirectional, LSTM, concatenate, Dense, Flatten, Activation, RepeatVector, Permute, Multiply, Lambda, Layer
 from tensorflow.keras import backend as K
@@ -291,6 +291,9 @@ class CNN_biLSTM_1(Model):
             combined = self.final_biLSTM(combined)
         return self.final_conv(combined)
     
+
+
+    
 class CNN_biLSTM_AddAttention(Model):
     def __init__(self, CNN_num_layers_seq, CNN_num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, biLSTM_num_layers_seq, biLSTM_num_layers_anno, unit_numbers_seq, unit_numbers_anno, unit_numbers_combined, only_seq):
         super(CNN_biLSTM_AddAttention, self).__init__()
@@ -433,79 +436,11 @@ class CNN_biLSTM_CustomAttention(Model):
         output = lstm_out * a  # Element-wise multiplication to apply weights
         return output
     
-class CNN_biLSTM_CustomAttention_2(Model):
-    def __init__(self, CNN_num_layers_seq, CNN_num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, biLSTM_num_layers_seq, biLSTM_num_layers_anno, unit_numbers_seq, unit_numbers_anno, unit_numbers_combined, only_seq):
-        super(CNN_biLSTM_CustomAttention_2, self).__init__()
-
-        assert len(filter_number_seq) >= CNN_num_layers_seq and len(kernel_size_seq) >= CNN_num_layers_seq, "Sequence stream lists must match the number of layers"
-        assert len(filter_number_anno) >= CNN_num_layers_anno and len(kernel_size_anno) >= CNN_num_layers_anno, "Annotation stream lists must match the number of layers"
-
-        assert len(unit_numbers_seq) >= biLSTM_num_layers_seq, "Sequence stream lists must match the number of layers"
-        assert len(unit_numbers_anno) >= biLSTM_num_layers_anno, "Annotation stream lists must match the number of layers"
-
-        # DNA sequence stream CNN layers
-        self.seq_layers_CNN = [Conv1D(filters=filter_number_seq[i], kernel_size=kernel_size_seq[i], padding='same', activation='relu') for i in range(CNN_num_layers_seq)]
-        self.drop_seq = Dropout(0.2)
-
-        self.only_seq = only_seq  
-        self.unit_numbers_combined = unit_numbers_combined
-
-        if not only_seq:
-            # Gene/operon annotation stream CNN layers
-            self.anno_layers_CNN = [Conv1D(filters=filter_number_anno[i], kernel_size=kernel_size_anno[i], padding='same', activation='relu') for i in range(CNN_num_layers_anno)]
-            self.drop_anno = Dropout(0.2)
-
-        # DNA sequence stream biLSTM layers
-        self.seq_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_seq[i], return_sequences=True)) for i in range(biLSTM_num_layers_seq)]
-
-        if not only_seq:
-            self.anno_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_anno[i], return_sequences=True)) for i in range(biLSTM_num_layers_anno)]
-
-        # Integrating the custom Attention layer
-        self.attention_layer = Attention(return_sequences=True)
-
-        # Shared layers
-        if unit_numbers_combined != 0:
-            self.final_biLSTM = Bidirectional(LSTM(unit_numbers_combined, return_sequences=True))
-
-        self.final_conv = Conv1D(filters=1, kernel_size=1, activation='relu', padding='same')
-
-    def call(self, inputs):
-        inputs_seq, inputs_anno = inputs
-
-        # DNA sequence stream
-        x_seq = inputs_seq
-        for layer in self.seq_layers_CNN:
-            x_seq = layer(x_seq)
-        
-        for layer in self.seq_layers_biLSTM:
-            x_seq = layer(x_seq)  
-        x_seq = self.drop_seq(x_seq)
-
-        if not self.only_seq:
-            # Gene/operon annotation stream
-            x_anno = inputs_anno
-            for layer in self.anno_layers_CNN:
-                x_anno = layer(x_anno)
-            for layer in self.anno_layers_biLSTM:
-                x_anno = layer(x_anno)  
-            x_anno = self.drop_anno(x_anno)
-            combined = concatenate([x_seq, x_anno])
-        else:
-            combined = x_seq
-
-        # Shared layers
-        if self.unit_numbers_combined != 0:
-            combined = self.final_biLSTM(combined)
-
-        attention_output = self.attention_layer(combined)
-
-        return self.final_conv(attention_output)
     
 
 class CNN_biLSTM_1_Masking(Model):
     def __init__(self, CNN_num_layers_seq, CNN_num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, biLSTM_num_layers_seq, biLSTM_num_layers_anno, unit_numbers_seq, unit_numbers_anno, unit_numbers_combined, only_seq, pad_symbol):
-        super(CNN_biLSTM_1, self).__init__()
+        super(CNN_biLSTM_1_Masking, self).__init__()
 
         assert len(filter_number_seq) >= CNN_num_layers_seq and len(kernel_size_seq) >= CNN_num_layers_seq, "Sequence stream lists must match the number of layers"
         assert len(filter_number_anno) >= CNN_num_layers_anno and len(kernel_size_anno) >= CNN_num_layers_anno, "Annotation stream lists must match the number of layers"
@@ -541,6 +476,453 @@ class CNN_biLSTM_1_Masking(Model):
 
     def call(self, inputs):
         inputs_seq, inputs_anno = inputs
+        # DNA sequence stream
+        
+        x_seq = inputs_seq
+        x_seq = self.seq_masking_layer(x_seq)
+        for layer in self.seq_layers_CNN:
+            x_seq = layer(x_seq)
+        
+        for layer in self.seq_layers_biLSTM:
+            x_seq = layer(x_seq)  
+        x_seq = self.drop_seq(x_seq)
+
+        if not self.only_seq:
+            # Gene/operon annotation stream
+            x_anno = inputs_anno
+            x_anno = self.anno_masking_layer(x_anno)
+            for layer in self.anno_layers_CNN:
+                x_anno = layer(x_anno)
+            for layer in self.anno_layers_biLSTM:
+                x_anno = layer(x_anno)  
+            x_anno = self.drop_anno(x_anno)
+            combined = concatenate([x_seq, x_anno])
+        else:
+            combined = x_seq
+
+        # Shared layers
+        if self.unit_numbers_combined != 0:
+            combined = self.final_biLSTM(combined)
+        return self.final_conv(combined)
+    
+
+class CNN_biLSTM_1_Masking_sep(Model):
+    def __init__(self, CNN_num_layers_seq, CNN_num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, biLSTM_num_layers_seq, biLSTM_num_layers_anno, unit_numbers_seq, unit_numbers_anno, unit_numbers_combined, only_seq, pad_symbol):
+        super(CNN_biLSTM_1_Masking_sep, self).__init__()
+        self.CNN_num_layers_seq = CNN_num_layers_seq
+        self.CNN_num_layers_anno = CNN_num_layers_anno
+        self.filter_number_seq = filter_number_seq
+        self.filter_number_anno = filter_number_anno
+        self.kernel_size_seq = kernel_size_seq
+        self.kernel_size_anno = kernel_size_anno
+        self.biLSTM_num_layers_seq = biLSTM_num_layers_seq
+        self.biLSTM_num_layers_anno = biLSTM_num_layers_anno
+        self.unit_numbers_seq = unit_numbers_seq
+        self.unit_numbers_anno = unit_numbers_anno
+        self.unit_numbers_combined = unit_numbers_combined
+        self.only_seq = only_seq
+        self.pad_symbol = pad_symbol
+        
+        assert len(filter_number_seq) >= CNN_num_layers_seq and len(kernel_size_seq) >= CNN_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(filter_number_anno) >= CNN_num_layers_anno and len(kernel_size_anno) >= CNN_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        assert len(unit_numbers_seq) >= biLSTM_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(unit_numbers_anno) >= biLSTM_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        # DNA sequence stream CNN layers
+        self.seq_layers_CNN = [Conv1D(filters=filter_number_seq[i], kernel_size=kernel_size_seq[i], padding='same', activation='relu') for i in range(CNN_num_layers_seq)]
+        self.drop_seq = Dropout(0.2)
+        self.seq_masking_layer = Masking(mask_value=pad_symbol)
+        
+
+        self.only_seq = only_seq  
+        self.unit_numbers_combined = unit_numbers_combined
+
+        if not only_seq:
+            # Gene/operon annotation stream CNN layers
+            self.anno_masking_layer = Masking(mask_value=pad_symbol)
+            self.anno_layers_CNN = [Conv1D(filters=filter_number_anno[i], kernel_size=kernel_size_anno[i], padding='same', activation='relu') for i in range(CNN_num_layers_anno)]
+            self.drop_anno = Dropout(0.2)
+
+        # DNA sequence stream biLSTM layers
+        self.seq_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_seq[i], return_sequences=True)) for i in range(biLSTM_num_layers_seq)]
+
+        if not only_seq:
+            self.anno_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_anno[i], return_sequences=True)) for i in range(biLSTM_num_layers_anno)]
+
+        # Shared layers
+        if unit_numbers_combined != 0:
+            self.final_biLSTM = Bidirectional(LSTM(unit_numbers_combined, return_sequences=True))
+        self.final_conv = Conv1D(filters=1, kernel_size=1, activation='relu', padding='same')
+
+    def call(self, inputs):
+        inputs_seq, inputs_anno = inputs
+        # DNA sequence stream
+        
+        x_seq = inputs_seq
+        x_seq = self.seq_masking_layer(x_seq)
+        for layer in self.seq_layers_CNN:
+            x_seq = layer(x_seq)
+        
+        for layer in self.seq_layers_biLSTM:
+            x_seq = layer(x_seq)  
+        x_seq = self.drop_seq(x_seq)
+
+        if not self.only_seq:
+            # Gene/operon annotation stream
+            x_anno = inputs_anno
+            x_anno = self.anno_masking_layer(x_anno)
+            for layer in self.anno_layers_CNN:
+                x_anno = layer(x_anno)
+            for layer in self.anno_layers_biLSTM:
+                x_anno = layer(x_anno)  
+            x_anno = self.drop_anno(x_anno)
+            combined = concatenate([x_seq, x_anno])
+        else:
+            combined = x_seq
+
+        # Shared layers
+        if self.unit_numbers_combined != 0:
+            combined = self.final_biLSTM(combined)
+        return self.final_conv(combined)
+    
+class CNN_biLSTM_1_Masking_TBi_Attention(Model):
+    def __init__(self, CNN_num_layers_seq, CNN_num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, biLSTM_num_layers_seq, biLSTM_num_layers_anno, unit_numbers_seq, unit_numbers_anno, unit_numbers_combined, only_seq, pad_symbol):
+        super(CNN_biLSTM_1_Masking_TBi_Attention, self).__init__()
+
+        assert len(filter_number_seq) >= CNN_num_layers_seq and len(kernel_size_seq) >= CNN_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(filter_number_anno) >= CNN_num_layers_anno and len(kernel_size_anno) >= CNN_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        assert len(unit_numbers_seq) >= biLSTM_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(unit_numbers_anno) >= biLSTM_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        # DNA sequence stream CNN layers
+        self.seq_layers_CNN = [Conv1D(filters=filter_number_seq[i], kernel_size=kernel_size_seq[i], padding='same', activation='relu') for i in range(CNN_num_layers_seq)]
+        self.drop_seq = Dropout(0.2)
+        self.seq_masking_layer = Masking(mask_value=pad_symbol)
+        self.seq_attention = AttentionLayerTBiNet()
+
+        self.only_seq = only_seq  
+        self.unit_numbers_combined = unit_numbers_combined
+
+        if not only_seq:
+            # Gene/operon annotation stream CNN layers
+            self.anno_masking_layer = Masking(mask_value=pad_symbol)
+            self.anno_layers_CNN = [Conv1D(filters=filter_number_anno[i], kernel_size=kernel_size_anno[i], padding='same', activation='relu') for i in range(CNN_num_layers_anno)]
+            self.drop_anno = Dropout(0.2)
+            self.anno_attention = AttentionLayerTBiNet()
+
+        # DNA sequence stream biLSTM layers
+        self.seq_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_seq[i], return_sequences=True)) for i in range(biLSTM_num_layers_seq)]
+
+        if not only_seq:
+            self.anno_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_anno[i], return_sequences=True)) for i in range(biLSTM_num_layers_anno)]
+
+        # Shared layers
+        if unit_numbers_combined != 0:
+            self.final_biLSTM = Bidirectional(LSTM(unit_numbers_combined, return_sequences=True))
+        self.final_conv = Conv1D(filters=1, kernel_size=1, activation='relu', padding='same')
+
+    def call(self, inputs):
+        inputs_seq, inputs_anno = inputs
+        # DNA sequence stream
+        
+        x_seq = inputs_seq
+        x_seq = self.seq_masking_layer(x_seq)
+        for layer in self.seq_layers_CNN:
+            x_seq = layer(x_seq)
+        x_seq = self.seq_attention(x_seq)
+        for layer in self.seq_layers_biLSTM:
+            x_seq = layer(x_seq)  
+        x_seq = self.drop_seq(x_seq)
+
+        if not self.only_seq:
+            # Gene/operon annotation stream
+            x_anno = inputs_anno
+            x_anno = self.anno_masking_layer(x_anno)
+            for layer in self.anno_layers_CNN:
+                x_anno = layer(x_anno)
+            x_anno = self.anno_attention(x_anno)
+            for layer in self.anno_layers_biLSTM:
+                x_anno = layer(x_anno)  
+            x_anno = self.drop_anno(x_anno)
+            combined = concatenate([x_seq, x_anno])
+        else:
+            combined = x_seq
+
+        # Shared layers
+        if self.unit_numbers_combined != 0:
+            combined = self.final_biLSTM(combined)
+        return self.final_conv(combined)
+    
+class CNN_biLSTM_1_Masking_TBi_Attention_2(Model):
+    def __init__(self, CNN_num_layers_seq, CNN_num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, biLSTM_num_layers_seq, biLSTM_num_layers_anno, unit_numbers_seq, unit_numbers_anno, unit_numbers_combined, only_seq, pad_symbol):
+        super(CNN_biLSTM_1_Masking_TBi_Attention_2, self).__init__()
+
+        assert len(filter_number_seq) >= CNN_num_layers_seq and len(kernel_size_seq) >= CNN_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(filter_number_anno) >= CNN_num_layers_anno and len(kernel_size_anno) >= CNN_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        assert len(unit_numbers_seq) >= biLSTM_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(unit_numbers_anno) >= biLSTM_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        # DNA sequence stream CNN layers
+        self.seq_layers_CNN = [Conv1D(filters=filter_number_seq[i], kernel_size=kernel_size_seq[i], padding='same', activation='relu') for i in range(CNN_num_layers_seq)]
+        self.drop_seq = Dropout(0.2)
+        self.seq_masking_layer = Masking(mask_value=pad_symbol)
+
+        self.only_seq = only_seq  
+        self.unit_numbers_combined = unit_numbers_combined
+
+        if not only_seq:
+            # Gene/operon annotation stream CNN layers
+            self.anno_masking_layer = Masking(mask_value=pad_symbol)
+            self.anno_layers_CNN = [Conv1D(filters=filter_number_anno[i], kernel_size=kernel_size_anno[i], padding='same', activation='relu') for i in range(CNN_num_layers_anno)]
+            self.drop_anno = Dropout(0.2)
+            
+
+        # DNA sequence stream biLSTM layers
+        self.seq_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_seq[i], return_sequences=True)) for i in range(biLSTM_num_layers_seq)]
+
+        if not only_seq:
+            self.anno_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_anno[i], return_sequences=True)) for i in range(biLSTM_num_layers_anno)]
+
+        # Shared layers
+        if unit_numbers_combined != 0:
+            self.final_biLSTM = Bidirectional(LSTM(unit_numbers_combined, return_sequences=True))
+        self.attention = AttentionLayerTBiNet()
+        self.final_conv = Conv1D(filters=1, kernel_size=1, activation='relu', padding='same')
+
+    def call(self, inputs):
+        inputs_seq, inputs_anno = inputs
+        # DNA sequence stream
+        
+        x_seq = inputs_seq
+        x_seq = self.seq_masking_layer(x_seq)
+        for layer in self.seq_layers_CNN:
+            x_seq = layer(x_seq)
+        
+        for layer in self.seq_layers_biLSTM:
+            x_seq = layer(x_seq)  
+        x_seq = self.drop_seq(x_seq)
+
+        if not self.only_seq:
+            # Gene/operon annotation stream
+            x_anno = inputs_anno
+            x_anno = self.anno_masking_layer(x_anno)
+            for layer in self.anno_layers_CNN:
+                x_anno = layer(x_anno)
+            for layer in self.anno_layers_biLSTM:
+                x_anno = layer(x_anno)  
+            x_anno = self.drop_anno(x_anno)
+            combined = concatenate([x_seq, x_anno])
+        else:
+            combined = x_seq
+
+        # Shared layers
+        if self.unit_numbers_combined != 0:
+            combined = self.final_biLSTM(combined)
+        combined = self.attention(combined)
+        return self.final_conv(combined)
+    
+class CNN_biLSTM_1_Masking_TBi_Attention_3(Model):
+    def __init__(self, CNN_num_layers_seq, CNN_num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, biLSTM_num_layers_seq, biLSTM_num_layers_anno, unit_numbers_seq, unit_numbers_anno, unit_numbers_combined, only_seq, pad_symbol):
+        super(CNN_biLSTM_1_Masking_TBi_Attention_3, self).__init__()
+
+        assert len(filter_number_seq) >= CNN_num_layers_seq and len(kernel_size_seq) >= CNN_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(filter_number_anno) >= CNN_num_layers_anno and len(kernel_size_anno) >= CNN_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        assert len(unit_numbers_seq) >= biLSTM_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(unit_numbers_anno) >= biLSTM_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        # DNA sequence stream CNN layers
+        self.seq_layers_CNN = [Conv1D(filters=filter_number_seq[i], kernel_size=kernel_size_seq[i], padding='same', activation='relu') for i in range(CNN_num_layers_seq)]
+        self.drop_seq = Dropout(0.2)
+        self.seq_masking_layer = Masking(mask_value=pad_symbol)
+
+        self.only_seq = only_seq  
+        self.unit_numbers_combined = unit_numbers_combined
+
+        if not only_seq:
+            # Gene/operon annotation stream CNN layers
+            self.anno_masking_layer = Masking(mask_value=pad_symbol)
+            self.anno_layers_CNN = [Conv1D(filters=filter_number_anno[i], kernel_size=kernel_size_anno[i], padding='same', activation='relu') for i in range(CNN_num_layers_anno)]
+            self.drop_anno = Dropout(0.2)
+            
+
+        # DNA sequence stream biLSTM layers
+        self.seq_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_seq[i], return_sequences=True)) for i in range(biLSTM_num_layers_seq)]
+
+        if not only_seq:
+            self.anno_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_anno[i], return_sequences=True)) for i in range(biLSTM_num_layers_anno)]
+
+        # Shared layers
+        if unit_numbers_combined != 0:
+            self.final_biLSTM = Bidirectional(LSTM(unit_numbers_combined, return_sequences=True))
+        self.attention = AttentionLayerTBiNet()
+        self.final_conv = Conv1D(filters=1, kernel_size=1, activation='relu', padding='same')
+
+    def call(self, inputs):
+        inputs_seq, inputs_anno = inputs
+        # DNA sequence stream
+        
+        x_seq = inputs_seq
+        x_seq = self.seq_masking_layer(x_seq)
+        for layer in self.seq_layers_CNN:
+            x_seq = layer(x_seq)
+        
+        for layer in self.seq_layers_biLSTM:
+            x_seq = layer(x_seq)  
+        x_seq = self.drop_seq(x_seq)
+
+        if not self.only_seq:
+            # Gene/operon annotation stream
+            x_anno = inputs_anno
+            x_anno = self.anno_masking_layer(x_anno)
+            for layer in self.anno_layers_CNN:
+                x_anno = layer(x_anno)
+            for layer in self.anno_layers_biLSTM:
+                x_anno = layer(x_anno)  
+            x_anno = self.drop_anno(x_anno)
+            combined = concatenate([x_seq, x_anno])
+        else:
+            combined = x_seq
+
+        # Shared layers
+        combined = self.attention(combined)
+        if self.unit_numbers_combined != 0:
+            combined = self.final_biLSTM(combined)
+        combined = self.attention(combined)
+        return self.final_conv(combined)
+
+class CNN_biLSTM_1_Masking_TBi_Attention_sep(Model):
+    def __init__(self, CNN_num_layers_seq, CNN_num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, biLSTM_num_layers_seq, biLSTM_num_layers_anno, unit_numbers_seq, unit_numbers_anno, unit_numbers_combined, only_seq, pad_symbol):
+        super(CNN_biLSTM_1_Masking_TBi_Attention_sep, self).__init__()
+        self.CNN_num_layers_seq = CNN_num_layers_seq
+        self.CNN_num_layers_anno = CNN_num_layers_anno
+        self.filter_number_seq = filter_number_seq
+        self.filter_number_anno = filter_number_anno
+        self.kernel_size_seq = kernel_size_seq
+        self.kernel_size_anno = kernel_size_anno
+        self.biLSTM_num_layers_seq = biLSTM_num_layers_seq
+        self.biLSTM_num_layers_anno = biLSTM_num_layers_anno
+        self.unit_numbers_seq = unit_numbers_seq
+        self.unit_numbers_anno = unit_numbers_anno
+        self.unit_numbers_combined = unit_numbers_combined
+        self.only_seq = only_seq
+        self.pad_symbol = pad_symbol
+
+        assert len(filter_number_seq) >= CNN_num_layers_seq and len(kernel_size_seq) >= CNN_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(filter_number_anno) >= CNN_num_layers_anno and len(kernel_size_anno) >= CNN_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        assert len(unit_numbers_seq) >= biLSTM_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(unit_numbers_anno) >= biLSTM_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        # DNA sequence stream CNN layers
+        self.seq_layers_CNN = [Conv1D(filters=filter_number_seq[i], kernel_size=kernel_size_seq[i], padding='same', activation='relu') for i in range(CNN_num_layers_seq)]
+        self.drop_seq = Dropout(0.2)
+        self.seq_masking_layer = Masking(mask_value=pad_symbol)
+        self.seq_attention = AttentionLayerTBiNet()
+
+        self.only_seq = only_seq  
+        self.unit_numbers_combined = unit_numbers_combined
+
+        if not only_seq:
+            # Gene/operon annotation stream CNN layers
+            self.anno_masking_layer = Masking(mask_value=pad_symbol)
+            self.anno_layers_CNN = [Conv1D(filters=filter_number_anno[i], kernel_size=kernel_size_anno[i], padding='same', activation='relu') for i in range(CNN_num_layers_anno)]
+            self.drop_anno = Dropout(0.2)
+            self.anno_attention = AttentionLayerTBiNet()
+
+        # DNA sequence stream biLSTM layers
+        self.seq_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_seq[i], return_sequences=True)) for i in range(biLSTM_num_layers_seq)]
+
+        if not only_seq:
+            self.anno_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_anno[i], return_sequences=True)) for i in range(biLSTM_num_layers_anno)]
+
+        # Shared layers
+        if unit_numbers_combined != 0:
+            self.final_biLSTM = Bidirectional(LSTM(unit_numbers_combined, return_sequences=True))
+        self.final_conv = Conv1D(filters=1, kernel_size=1, activation='relu', padding='same')
+
+    def call(self, inputs):
+        inputs_seq, inputs_anno = inputs
+        # DNA sequence stream
+        
+        x_seq = inputs_seq
+        x_seq = self.seq_masking_layer(x_seq)
+        for layer in self.seq_layers_CNN:
+            x_seq = layer(x_seq)
+        x_seq = self.seq_attention(x_seq)
+        for layer in self.seq_layers_biLSTM:
+            x_seq = layer(x_seq)  
+        x_seq = self.drop_seq(x_seq)
+
+        if not self.only_seq:
+            # Gene/operon annotation stream
+            x_anno = inputs_anno
+            x_anno = self.anno_masking_layer(x_anno)
+            for layer in self.anno_layers_CNN:
+                x_anno = layer(x_anno)
+            x_anno = self.anno_attention(x_anno)
+            for layer in self.anno_layers_biLSTM:
+                x_anno = layer(x_anno)  
+            x_anno = self.drop_anno(x_anno)
+            combined = concatenate([x_seq, x_anno])
+        else:
+            combined = x_seq
+
+        # Shared layers
+        if self.unit_numbers_combined != 0:
+            combined = self.final_biLSTM(combined)
+        return self.final_conv(combined)
+
+class CNN_biLSTM_Custom_Attention_Masking(Model):
+    def __init__(self, CNN_num_layers_seq, CNN_num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, biLSTM_num_layers_seq, biLSTM_num_layers_anno, unit_numbers_seq, unit_numbers_anno, unit_numbers_combined, only_seq, pad_symbol):
+        super(CNN_biLSTM_Custom_Attention_Masking, self).__init__()
+
+        assert len(filter_number_seq) >= CNN_num_layers_seq and len(kernel_size_seq) >= CNN_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(filter_number_anno) >= CNN_num_layers_anno and len(kernel_size_anno) >= CNN_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        assert len(unit_numbers_seq) >= biLSTM_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(unit_numbers_anno) >= biLSTM_num_layers_anno, "Annotation stream lists must match the number of layers"
+
+        # DNA sequence stream CNN layers
+        self.seq_layers_CNN = [Conv1D(filters=filter_number_seq[i], kernel_size=kernel_size_seq[i], padding='same', activation='relu') for i in range(CNN_num_layers_seq)]
+        self.drop_seq = Dropout(0.2)
+        self.seq_masking_layer = Masking(mask_value=pad_symbol)
+        
+
+        self.only_seq = only_seq  
+        self.unit_numbers_combined = unit_numbers_combined
+
+        if not only_seq:
+            # Gene/operon annotation stream CNN layers
+            self.anno_masking_layer = Masking(mask_value=pad_symbol)
+            self.anno_layers_CNN = [Conv1D(filters=filter_number_anno[i], kernel_size=kernel_size_anno[i], padding='same', activation='relu') for i in range(CNN_num_layers_anno)]
+            self.drop_anno = Dropout(0.2)
+
+        # DNA sequence stream biLSTM layers
+        self.seq_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_seq[i], return_sequences=True)) for i in range(biLSTM_num_layers_seq)]
+
+        if not only_seq:
+            self.anno_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_anno[i], return_sequences=True)) for i in range(biLSTM_num_layers_anno)]
+
+        # Custom attention mechanism
+        self.attention_dense = Dense(1, activation='tanh')
+        self.attention_flatten = Flatten()
+        self.attention_activation = Activation('softmax')
+        self.attention_repeat = RepeatVector(unit_numbers_combined * 2)  # Adjust based on your model's specifics
+        self.attention_permute = Permute([2, 1])
+        self.attention_multiply = Multiply()
+        self.attention_lambda = Lambda(lambda values: K.sum(values, axis=1), output_shape=(unit_numbers_combined * 2,))
+
+        # Shared layers
+        if unit_numbers_combined != 0:
+            self.final_biLSTM = Bidirectional(LSTM(unit_numbers_combined, return_sequences=True))
+        self.final_conv = Conv1D(filters=1, kernel_size=1, activation='relu', padding='same')
+
+    def call(self, inputs):
+        inputs_seq, inputs_anno = inputs
 
         # DNA sequence stream
         x_seq = inputs_seq
@@ -568,62 +950,82 @@ class CNN_biLSTM_1_Masking(Model):
         # Shared layers
         if self.unit_numbers_combined != 0:
             combined = self.final_biLSTM(combined)
-        return self.final_conv(combined)
+        attention_weighted = self.apply_attention(combined)
+
+        return self.final_conv(attention_weighted)
+    
+    def apply_attention(self, lstm_out):
+        e = self.attention_dense(lstm_out)
+        a = self.attention_activation(e)
+        output = lstm_out * a  # Element-wise multiplication to apply weights
+        return output
 
 ############################################### COVERAGE AS PROBABILITY APPROACH ###############################################
-    
+class CNN_biLSTM_1_Masking_Probabilistic(Model):
+    def __init__(self, CNN_num_layers_seq, CNN_num_layers_anno, filter_number_seq, filter_number_anno, kernel_size_seq, kernel_size_anno, biLSTM_num_layers_seq, biLSTM_num_layers_anno, unit_numbers_seq, unit_numbers_anno, unit_numbers_combined, only_seq, pad_symbol):
+        super(CNN_biLSTM_1_Masking_Probabilistic, self).__init__()
 
+        assert len(filter_number_seq) >= CNN_num_layers_seq and len(kernel_size_seq) >= CNN_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(filter_number_anno) >= CNN_num_layers_anno and len(kernel_size_anno) >= CNN_num_layers_anno, "Annotation stream lists must match the number of layers"
 
-class CNN_BiLSTM_two_outputs_1(Model): # better than previous
-    def __init__(self):
-        super(CNN_BiLSTM_two_outputs_1, self).__init__()
-        # DNA sequence stream
-        self.conv1_seq = Conv1D(filters=100, kernel_size=4, padding='same')
-        self.batchnorm1_seq = BatchNormalization()  # Batch normalization layer
-        self.pool1_seq = CustomPooling(pool_size=2, strides=2)
-        self.pool2_seq = CustomPooling(pool_size=2, strides=2)
-        self.conv3_seq = Conv1D(filters=150, kernel_size=8, padding='same')
-        self.batchnorm3_seq = BatchNormalization()  # Batch normalization layer
-        self.drop2_seq = Dropout(0.2)
+        assert len(unit_numbers_seq) >= biLSTM_num_layers_seq, "Sequence stream lists must match the number of layers"
+        assert len(unit_numbers_anno) >= biLSTM_num_layers_anno, "Annotation stream lists must match the number of layers"
 
-        # Gene/operon annotation stream
-        self.conv1_anno = Conv1D(filters=50, kernel_size=4, padding='same')
-        self.batchnorm1_anno = BatchNormalization()  # Batch normalization layer
-        self.pool1_anno = CustomPooling(pool_size=2, strides=2)
-        self.pool2_anno = CustomPooling(pool_size=2, strides=2)
-        self.conv2_anno = Conv1D(filters=100, kernel_size=8, padding='same')
-        self.batchnorm2_anno = BatchNormalization()  # Batch normalization layer
-        self.drop2_anno = Dropout(0.2)
+        # DNA sequence stream CNN layers
+        self.seq_layers_CNN = [Conv1D(filters=filter_number_seq[i], kernel_size=kernel_size_seq[i], padding='same', activation='relu') for i in range(CNN_num_layers_seq)]
+        self.drop_seq = Dropout(0.2)
+        self.seq_masking_layer = Masking(mask_value=pad_symbol)
+        
+
+        self.only_seq = only_seq  
+        self.unit_numbers_combined = unit_numbers_combined
+
+        if not only_seq:
+            # Gene/operon annotation stream CNN layers
+            self.anno_masking_layer = Masking(mask_value=pad_symbol)
+            self.anno_layers_CNN = [Conv1D(filters=filter_number_anno[i], kernel_size=kernel_size_anno[i], padding='same', activation='relu') for i in range(CNN_num_layers_anno)]
+            self.drop_anno = Dropout(0.2)
+
+        # DNA sequence stream biLSTM layers
+        self.seq_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_seq[i], return_sequences=True)) for i in range(biLSTM_num_layers_seq)]
+
+        if not only_seq:
+            self.anno_layers_biLSTM = [Bidirectional(LSTM(unit_numbers_anno[i], return_sequences=True)) for i in range(biLSTM_num_layers_anno)]
 
         # Shared layers
-        self.bilstm = Bidirectional(LSTM(32, return_sequences=True, dropout=0.2))
-        self.drop3 = Dropout(0.2)
+        if unit_numbers_combined != 0:
+            self.final_biLSTM = Bidirectional(LSTM(unit_numbers_combined, return_sequences=True))
         self.final_conv = Conv1D(filters=2, kernel_size=1, activation='softmax', padding='same')
 
     def call(self, inputs):
         inputs_seq, inputs_anno = inputs
         # DNA sequence stream
-        x_seq = self.conv1_seq(inputs_seq)
-        x_seq = self.batchnorm1_seq(x_seq, training=False)
-        x_seq = self.pool1_seq(x_seq)
-        x_seq = self.pool2_seq(x_seq)
-        x_seq = self.conv3_seq(x_seq)
-        x_seq = self.batchnorm3_seq(x_seq, training=False)
-        x_seq = self.drop2_seq(x_seq)
+        
+        x_seq = inputs_seq
+        x_seq = self.seq_masking_layer(x_seq)
+        for layer in self.seq_layers_CNN:
+            x_seq = layer(x_seq)
+        
+        for layer in self.seq_layers_biLSTM:
+            x_seq = layer(x_seq)  
+        x_seq = self.drop_seq(x_seq)
 
-        # Gene/operon annotation stream
-        x_anno = self.conv1_anno(inputs_anno)
-        x_anno = self.batchnorm1_anno(x_anno, training=False)
-        x_anno = self.pool1_anno(x_anno)
-        x_anno = self.pool2_anno(x_anno)
-        x_anno = self.conv2_anno(x_anno)
-        x_anno = self.batchnorm2_anno(x_anno, training=False)
-        x_anno = self.drop2_anno(x_anno)
-
-        # Combine the outputs of both streams
-        combined = concatenate([x_seq, x_anno])
+        if not self.only_seq:
+            # Gene/operon annotation stream
+            x_anno = inputs_anno
+            x_anno = self.anno_masking_layer(x_anno)
+            for layer in self.anno_layers_CNN:
+                x_anno = layer(x_anno)
+            for layer in self.anno_layers_biLSTM:
+                x_anno = layer(x_anno)  
+            x_anno = self.drop_anno(x_anno)
+            combined = concatenate([x_seq, x_anno])
+        else:
+            combined = x_seq
 
         # Shared layers
-        x = self.bilstm(combined)
-        x = self.drop3(x)
-        return self.final_conv(x)
+        if self.unit_numbers_combined != 0:
+            combined = self.final_biLSTM(combined)
+        return self.final_conv(combined)
+
+

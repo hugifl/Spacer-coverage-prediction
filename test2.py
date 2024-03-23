@@ -11,68 +11,32 @@ binsize = 4
 dataset_name = '3200_1600_gene_norm'
 
 ###############################################################
-outdir = '../spacer_coverage_output_2/'
-data_dir = '/cluster/scratch/hugifl/spacer_coverage_final_data_2/'
-data_file = data_dir + dataset_name + "_data"+"/train_test_data_normalized_windows_info.npz"
-
-data = np.load(data_file)
+data_dir = '/cluster/scratch/hugifl/spacer_coverage_final_data_2/Transcriptional_Units_TU_norm_V2_data_2/train_test_data_normalized_windows_info_scaled.npz'
+data = np.load(data_dir)
 X_train = data['X_train']
 X_test = data['X_test']
 Y_train = data['Y_train']
 Y_test = data['Y_test']
 
-# Adjust the coverage data
-Y_train = Y_train[:, 2:]
-Y_test = Y_test[:, 2:]
+print("shape of X_train: ", X_train.shape)
+print("shape of Y_train: ", Y_train.shape)
 
+# print row max and min of Y_train for tirst 10 rows
+print("max of Y_train for first 10 rows: ", np.max(Y_train[:10,2:], axis=1))
 
-
-# Find rows with NaNs or Infs in Y_train
-rows_with_nans_or_infs = np.any(np.isnan(Y_train) | np.isinf(Y_train), axis=1)
-Y_train_filtered = Y_train[~rows_with_nans_or_infs]
-X_train_filtered = X_train[~rows_with_nans_or_infs]
-
-# Find rows with NaNs or Infs in Y_test
-rows_with_nans_or_infs = np.any(np.isnan(Y_test) | np.isinf(Y_test), axis=1)
-Y_test_filtered = Y_test[~rows_with_nans_or_infs]
-X_test_filtered = X_test[~rows_with_nans_or_infs]
-
-
-# Filter out windows that contain genes with coverage peaks too high (normalization error due to wrong/non-matching coordinates) or too low (low gene expression, noisy profile)
-#indices_to_remove_train = np.where((Y_train_filtered > 200).any(axis=1) | (Y_train_filtered.max(axis=1) < 5))[0]
-##
-### Remove these rows from Y_train and X_train
-#Y_train_filtered = np.delete(Y_train_filtered, indices_to_remove_train, axis=0)
-#X_train_filtered = np.delete(X_train_filtered, indices_to_remove_train, axis=0)
+print(Y_train[7,:])
+#dir = '/cluster/scratch/hugifl/spacer_coverage_final_data_2/Diet1_Transcriptional_Units_TU_norm_V2_data/TU_coverage_data_summed_TU_removed.csv'
 #
-## Find indices where the maximum value in a row of Y_test exceeds 20 or is below 2
-#indices_to_remove_test = np.where((Y_test_filtered > 200).any(axis=1) | (Y_test_filtered.max(axis=1) < 5))[0]
-##
-### Remove these rows from Y_test and X_test
-#Y_test_filtered = np.delete(Y_test_filtered, indices_to_remove_test, axis=0)
-#X_test_filtered = np.delete(X_test_filtered, indices_to_remove_test, axis=0)
-
-#Y_train_binarized = (Y_train_filtered > 2).astype(int)
-#Y_test_binarized = (Y_test_filtered > 2).astype(int)
-
-
-    
-
-
-
-# Adjust the input data
-X_train_seq = X_train_filtered[:, :, :4]  # Sequence data
-X_train_anno = X_train_filtered[:, :, 4:] # Annotation data
-
-X_test_seq = X_test_filtered[:, :, :4]  # Sequence data
-X_test_anno = X_test_filtered[:, :, 4:] # Annotation data
-
-print("dimension of X_train_seq: ", X_train_seq.shape)
-print("dimension of X_train_anno: ", X_train_anno.shape)
-
-
-# Filter the annotation arrays
-X_train_anno, X_test_anno = filter_annotation_features(X_train_anno, X_test_anno, ['gene_vector', 'promoter_vector', 'gene_directionality_vector'])
-
-print("shape of X_train_anno: ", X_train_anno.shape)
-print("shape of X_test_anno: ", X_test_anno.shape)
+#df = pd.read_csv(dir, sep=',', comment="#")
+#print("shape of df: ", df.shape)
+#print("first 10 columns of df: ", df.columns[:10])
+#print("last 10 columns of df: ", df.columns[-10:])
+#print("first 7 values of first row of df: ", df.iloc[0, :7])
+#print("last 7 values of first row of df: ", df.iloc[0, -7:])
+#data_window = '/cluster/scratch/hugifl/spacer_coverage_final_data_2/Diet1_Transcriptional_Units_TU_norm_V2_data/XY_data_Y_with_windows.npz'
+#data = np.load(data_window) 
+#X, Y = data['X'], data['Y']
+#X = X.astype(np.float32)
+#
+#print("shape of X: ", X.shape)
+#print("shape of Y: ", Y.shape)

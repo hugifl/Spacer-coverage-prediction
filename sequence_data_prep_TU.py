@@ -60,7 +60,7 @@ gene_df.drop(gene_df.columns[1], axis=1, inplace=True)
 gene_df.dropna(inplace=True)
 
 TU_df = pd.read_csv(TU_file, sep='\t')
-TU_df.dropna(inplace=True)          ################ continue here 
+TU_df.dropna(inplace=True)         
     
 # Load coverage dataframe (already filtered for low expressed genes and summed over all samples)
 coverage_df_summed = pd.read_csv(coverage_df_file, sep=',', comment="#")

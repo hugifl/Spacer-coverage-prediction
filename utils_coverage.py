@@ -169,7 +169,7 @@ def process_batch(bam_batch, windows, reference_genome, binsize, bam_directory):
             for almnt in bamfile.fetch(window_ref, window_start_pos, window_end_pos):
                 if almnt.aligned:
                     window_aligned_read_count += 1
-            coverage_array = numpy.fromiter(coverage[window_iv], dtype='i', count=window_end - window_start)
+            coverage_array = numpy.fromiter(coverage[window_iv], dtype='i', count=window_end - window_start  ) 
             #coverage_array = coverage_array / count_dict[bam_file]  # Normalize by total number of spacers per bam file          CHANGE MAYBE
             coverage_array, num_bins = bin_coverage(coverage_array, binsize)  # Bin the coverage array
             coverage_row = [window_start, window_end] + coverage_array.tolist()
@@ -184,7 +184,7 @@ def process_batch(bam_batch, windows, reference_genome, binsize, bam_directory):
 def process_batch_TU(bam_batch, count_df, reference_genome, bam_directory, pad_symbol):
     pad_symbol = float(pad_symbol)
     # Determine the length of the longest TU
-    max_length = count_df['Length'].max()
+    max_length = count_df['Length'].max() - 1
     aligned_read_count = 0
     TU_aligned_read_count = 0
     total_read_count = 0
@@ -572,22 +572,27 @@ def normalize_coverage_for_tot_aligned_reads_TU(coverage_data, library_size, exp
     for index, row in coverage_normalized.iterrows():
         # Calculate the length from 'Start' and 'End'
         length = row['End'] - row['Start']
-        print("length: " + str(length))
+        #print("length: " + str(length))
         
         # Columns to be normalized start at index 5 and end at index 5 + length
         start_col_index = 4
         end_col_index = start_col_index + length - 1
         # Apply normalization for the specified range
         # Ensure the range does not exceed the DataFrame's column limits
-        print("end_col_index before: " + str(end_col_index))
+        #print("end_col_index before: " + str(end_col_index))
         end_col_index = min(end_col_index, coverage_normalized.shape[1])
         # Normalize the coverage data for the relevant columns
-        print("start_col_index: " + str(start_col_index))
-        print("end_col_index after: " + str(end_col_index))
-        print("TU length: " + str(length))
-        print("TU name: " + str(row['TU_Name']))
-        print("length of row: " + str(len(row)))
-        print("start of row: " + str(row[:40]))
+        #print("start_col_index: " + str(start_col_index))
+        #print("end_col_index after: " + str(end_col_index))
+        #print("TU length: " + str(length))
+        #print("TU name: " + str(row['TU_Name']))
+        #print("length of row: " + str(len(row)))
+        #print("start of row: " + str(row[:40]))
+        # Iterate over the specified slice and check data types
+        for col in range(start_col_index, end_col_index):
+            value = coverage_normalized.iloc[index, col]
+            if not isinstance(value, (int, float, numpy.number)):
+                print(f"Non-numeric value found: {value} at Row {index}, Column {col}")
         coverage_normalized.iloc[index, start_col_index:end_col_index] = coverage_normalized.iloc[index, start_col_index:end_col_index] * normalization_factor
     return coverage_normalized
 

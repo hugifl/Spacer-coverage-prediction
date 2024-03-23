@@ -16,3 +16,16 @@ rule spacer_coverage_data_prep:
     output: /cluster/scratch/hugifl/spacer_coverage_final_data_2/Diet1_Transcriptional_Units_TU_norm_V2_data/TU_coverage_data_summed.csv, /cluster/scratch/hugifl/spacer_coverage_final_data_2/Diet1_Transcriptional_Units_TU_norm_V2_data/TU_spacer_counts.csv, /cluster/scratch/hugifl/spacer_coverage_final_data_2/Diet1_Transcriptional_Units_TU_norm_V2_data/tot_number_aligned_reads.txt, /cluster/scratch/hugifl/spacer_coverage_final_data_2/Diet1_Transcriptional_Units_TU_norm_V2_data/TU_coverage_data_summed_TU_removed.csv
     jobid: 1
 
+[Fri Mar  1 16:22:03 2024]
+Finished job 1.
+1 of 4 steps (25%) done
+
+[Fri Mar  1 16:22:03 2024]
+rule sequence_data_prep:
+    input: /cluster/scratch/hugifl/spacer_coverage_final_data_2/Diet1_Transcriptional_Units_TU_norm_V2_data/TU_coverage_data_summed_TU_removed.csv
+    output: /cluster/scratch/hugifl/spacer_coverage_final_data_2/Diet1_Transcriptional_Units_TU_norm_V2_data/XY_data_Y_with_windows.npz
+    jobid: 2
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: /cluster/home/hugifl/spacer_coverage_prediction/.snakemake/log/2024-03-01T153824.100977.snakemake.log

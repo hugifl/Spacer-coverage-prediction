@@ -1,122 +1,41 @@
 #from models import CNN_BiLSTM_custom_pooling_dual_input_4_3, CNN_BiLSTM_custom_pooling_dual_input_4_2, CNN_BiLSTM_custom_pooling_dual_input_4 ,CNN_BiLSTM_custom_pooling_dual_input, CNN_BiLSTM_custom_pooling_dual_input_2, CNN_BiLSTM_avg_pooling_4_dual_input, CNN_BiLSTM_avg_pooling_4_dual_input_2
-from models_2 import CNN_biLSTM_1_Masking, CNN_biLSTM_Custom_Attention_Masking, CNN_biLSTM_1_Masking_TBi_Attention, CNN_biLSTM_1_Masking_TBi_Attention_2, CNN_biLSTM_1_Masking_TBi_Attention_3
+from models_2 import CNN_biLSTM_1_Masking_Probabilistic
 import keras
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.model_selection import train_test_split
-from custom_elements import  poisson_loss, poisson_loss_with_masking, NaNChecker, calculate_pearson_correlation, find_and_plot_peaks, calculate_peak_f1_score, PearsonCorrelationCallback_TU, F1ScoreCallback_TU
+from custom_elements import  poisson_loss, binary_crossentropy_with_masking, NaNChecker, calculate_pearson_correlation, find_and_plot_peaks, calculate_peak_f1_score, PearsonCorrelationCallback_TU_2_outputs, F1ScoreCallback_TU_2_outputs
 from tensorflow.keras.callbacks import EarlyStopping, LambdaCallback
 from keras.callbacks import ModelCheckpoint
-from utils_training import filter_annotation_features_TU, evaluate_model, custom_batch_generator, clip_test_set, calculate_total_batches, restrict_TU_lengths, add_missing_padding
+from utils_training import filter_annotation_features_TU, evaluate_model_2_outputs, custom_batch_generator_2_outputs, clip_test_set_2_outputs, calculate_total_batches, restrict_TU_lengths, add_missing_padding
 from scipy.signal import find_peaks
 import os
 import re
 import glob
 import pandas as pd
-from utils_plotting import plot_predicted_vs_observed_TU_during_training
+from utils_plotting import plot_predicted_vs_observed_TU_during_training_probab
 ##################### Set before training #####################
 
 binsize = 1
 batch_size = 64
 dataset_name = 'Transcriptional_Units_TU_norm_V2_2'
-pad_symbol = 0.420
+pad_symbol = 0.42
 
 
-model_configurations = {
-    'CNN_biLSTM_1_Masking_restr_TBi_Attention_3': {
-        'architecture': CNN_biLSTM_1_Masking_TBi_Attention_3,
-        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
-        'epochs': 100,
-        'learning_rate': 0.0025,
-        'CNN_num_layers_seq': 2,
-        'CNN_num_layers_anno': 2,
-        'filter_number_seq': [100,100,100],
-        'filter_number_anno': [100,100,100],
-        'kernel_size_seq': [3,3,3],
-        'kernel_size_anno': [3,3,3],
-        'biLSTM_num_layers_seq': 1,
-        'biLSTM_num_layers_anno': 0,
-        'unit_numbers_seq': [24],
-        'unit_numbers_anno': [],
-        'unit_numbers_combined': 8,
-        'only_seq': False
-    }
-}
+
+
 
 #model_configurations = {
-#    'CNN_biLSTM_1_Masking_restr_TBi_Attention_2': {
-#        'architecture': CNN_biLSTM_1_Masking_TBi_Attention_2,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
-#        'epochs': 100,
-#        'learning_rate': 0.0025,
-#        'CNN_num_layers_seq': 2,
-#        'CNN_num_layers_anno': 2,
-#        'filter_number_seq': [100,100],
-#        'filter_number_anno': [100,100],
-#        'kernel_size_seq': [3,3],
-#        'kernel_size_anno': [3,3],
-#        'biLSTM_num_layers_seq': 1,
-#        'biLSTM_num_layers_anno': 1,
-#        'unit_numbers_seq': [24],
-#        'unit_numbers_anno': [24],
-#        'unit_numbers_combined': 8,
-#        'only_seq': False
-#    }
-#}
-
-#model_configurations = {
-#    'CNN_biLSTM_1_Masking_restr_TBi_Attention_1': {
-#        'architecture': CNN_biLSTM_1_Masking_TBi_Attention,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
-#        'epochs': 100,
-#        'learning_rate': 0.0025,
-#        'CNN_num_layers_seq': 2,
-#        'CNN_num_layers_anno': 2,
-#        'filter_number_seq': [100,100],
-#        'filter_number_anno': [100,100],
-#        'kernel_size_seq': [3,3],
-#        'kernel_size_anno': [3,3],
-#        'biLSTM_num_layers_seq': 1,
-#        'biLSTM_num_layers_anno': 1,
-#        'unit_numbers_seq': [24],
-#        'unit_numbers_anno': [24],
-#        'unit_numbers_combined': 8,
-#        'only_seq': False
-#    }
-#}
-
-#model_configurations = {
-#    'CNN_biLSTM_1_Masking_restr_new_2': {
-#        'architecture': CNN_biLSTM_1_Masking,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
-#        'epochs': 100,
-#        'learning_rate': 0.001,
-#        'CNN_num_layers_seq': 3,
-#        'CNN_num_layers_anno': 3,
-#        'filter_number_seq': [50,100,100],
-#        'filter_number_anno': [50,100,100],
-#        'kernel_size_seq': [3,3,3],
-#        'kernel_size_anno': [3,3,3],
-#        'biLSTM_num_layers_seq': 1,
-#        'biLSTM_num_layers_anno': 1,
-#        'unit_numbers_seq': [24],
-#        'unit_numbers_anno': [24],
-#        'unit_numbers_combined': 8,
-#        'only_seq': False
-#    }
-#}
-
-#model_configurations = {
-#    'CNN_biLSTM_Custom_Attention_Masking_1': {
-#        'architecture': CNN_biLSTM_Custom_Attention_Masking,
+#    'CNN_biLSTM_Custom_Attention_Masking_1_proba_global_2': {
+#        'architecture': CNN_biLSTM_1_Masking_Probabilistic,
 #        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
 #        'epochs': 50,
 #        'learning_rate': 0.005,
 #        'CNN_num_layers_seq': 2,
 #        'CNN_num_layers_anno': 2,
-#        'filter_number_seq': [50,100],
-#        'filter_number_anno': [50,100],
+#        'filter_number_seq': [100,100],
+#        'filter_number_anno': [100,100],
 #        'kernel_size_seq': [3,3],
 #        'kernel_size_anno': [3,3],
 #        'biLSTM_num_layers_seq': 1,
@@ -128,9 +47,11 @@ model_configurations = {
 #    }
 #}
 
+
+
 #model_configurations = {
-#    'test': {
-#        'architecture': CNN_biLSTM_1_Masking,
+#    'proba_test_gobalnew': {
+#        'architecture': CNN_biLSTM_1_Masking_Probabilistic,
 #        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
 #        'epochs': 1,
 #        'learning_rate': 0.005,
@@ -152,7 +73,7 @@ model_configurations = {
 ###############################################################
 outdir = '../spacer_coverage_output_2/'
 data_dir = '/cluster/scratch/hugifl/spacer_coverage_final_data_2/'
-data_file = data_dir + dataset_name + "_data"+"/train_test_data_normalized_windows_info.npz"
+data_file = data_dir + dataset_name + "_data"+"/train_test_data_normalized_windows_info_scaled_global_smoothed.npz" 
 
 data = np.load(data_file)
 X_train = data['X_train']
@@ -193,6 +114,7 @@ X_test_filtered = X_test[~rows_with_nans_or_infs]
 X_test_filtered, Y_test_filtered = restrict_TU_lengths(X_test_filtered, Y_test_filtered, min_length=200, max_length=3000)
 X_train_filtered, Y_train_filtered = restrict_TU_lengths(X_train_filtered, Y_train_filtered, min_length=200, max_length=3000)
 
+print("Y_test_filtered exampe: ", Y_test_filtered[10,2:70])
 
 for model_name, config in model_configurations.items():
     
@@ -207,14 +129,15 @@ for model_name, config in model_configurations.items():
 
     X_test_seq = X_test_filtered[:, :, :4]  # Sequence data
     X_test_anno = X_test_filtered[:, :, 4:] # Annotation data
-
-    X_test_seq_eval, X_test_anno_eval, Y_test_filtered_eval = clip_test_set(X_test_seq, X_test_anno, Y_test_filtered)    
+    
+    X_test_seq_eval, X_test_anno_eval, Y_test_filtered_eval = clip_test_set_2_outputs(X_test_seq, X_test_anno, Y_test_filtered, pad_symbol) 
+    print("Y_test_filtered exampe: ", Y_test_filtered_eval[10,2:70])
 
     # Filter the annotation arrays
     X_train_anno, X_test_anno = filter_annotation_features_TU(X_train_anno, X_test_anno, config['features'])
     
-    train_generator = custom_batch_generator(X_train_seq, X_train_anno, Y_train_filtered, batch_size)
-    validation_generator = custom_batch_generator(X_test_seq, X_test_anno, Y_test_filtered, batch_size)
+    train_generator = custom_batch_generator_2_outputs(X_train_seq, X_train_anno, Y_train_filtered, pad_symbol, batch_size)
+    validation_generator = custom_batch_generator_2_outputs(X_test_seq, X_test_anno, Y_test_filtered, pad_symbol, batch_size)
 
     train_steps_per_epoch = calculate_total_batches(Y_train_filtered, batch_size=batch_size, max_length_threshold=4000)
     val_steps_per_epoch = calculate_total_batches(Y_test_filtered, batch_size=batch_size, max_length_threshold=4000)
@@ -223,15 +146,15 @@ for model_name, config in model_configurations.items():
     early_stopping = EarlyStopping(
     monitor='val_loss',  
     min_delta=0.0005,     
-    patience=20,     #10    
+    patience=10,        
     restore_best_weights=True  
     )   
 
     
     nan_checker = NaNChecker()
     optimizer = tf.keras.optimizers.Adam(learning_rate=config['learning_rate'])
-    pearson_callback = PearsonCorrelationCallback_TU(train_generator, num_samples=10, use_log=True, plot=False, pad_symbol= pad_symbol)
-    f1_callback = F1ScoreCallback_TU(train_generator, num_samples=10, width=10, prominence=0.05, overlap_threshold=0.02, pad_symbol= pad_symbol)
+    pearson_callback = PearsonCorrelationCallback_TU_2_outputs(train_generator, num_samples=10, use_log=True, plot=False, pad_symbol= pad_symbol)
+    f1_callback = F1ScoreCallback_TU_2_outputs(train_generator, num_samples=10, width=10, prominence=0.00625, overlap_threshold=0.02, pad_symbol= pad_symbol)
     
     
     checkpoint_callback = ModelCheckpoint(
@@ -242,7 +165,7 @@ for model_name, config in model_configurations.items():
         verbose=1)
     
     callbacks_list = [early_stopping, nan_checker, pearson_callback, f1_callback] #checkpoint_callback
-    custom_objects = {'poisson_loss': poisson_loss_with_masking}
+    custom_objects = {'binary_crossentropy_loss': binary_crossentropy_with_masking}
 
     # Setup model based on configuration
     model = config['architecture'](
@@ -263,7 +186,7 @@ for model_name, config in model_configurations.items():
  
     
     optimizer = tf.keras.optimizers.Adam(learning_rate=config['learning_rate'])
-    model.compile(optimizer=optimizer, loss=poisson_loss_with_masking, run_eagerly=True)
+    model.compile(optimizer=optimizer, loss=binary_crossentropy_with_masking, run_eagerly=True)
     
     # Filter annotation features based on model configuration
     annotation_features_to_use = config['features']
@@ -279,7 +202,7 @@ for model_name, config in model_configurations.items():
             epochs_already_ran = int(match.group(1))
             print(f"Resuming from epoch {epochs_already_ran}")
             # Corrected line: assign the loaded model back to the `model` variable
-            model = keras.models.load_model(latest_checkpoint, custom_objects={'poisson_loss': poisson_loss_with_masking})
+            model = keras.models.load_model(latest_checkpoint, custom_objects={'binary_crossentropy_loss': binary_crossentropy_with_masking})
         else:
             print("Could not extract epoch number from checkpoint filename, starting from scratch")
     else:
@@ -303,20 +226,19 @@ for model_name, config in model_configurations.items():
     Y_pred = model.predict([X_test_seq_eval, X_test_anno_eval])
 
     # Calculate average Pearson correlation and F1 score using the provided evaluate_model function
-    avg_pearson_correlation, avg_f1_score = evaluate_model(Y_test_filtered_eval, Y_pred, model_name, outdir, dataset_name, pad_symbol= pad_symbol, width=10, prominence=0.05, overlap_threshold=0.02)
+    avg_pearson_correlation, avg_f1_score = evaluate_model_2_outputs(Y_test_filtered_eval, Y_pred, model_name, outdir, dataset_name, pad_symbol= pad_symbol, width=10, prominence=0.00625, overlap_threshold=0.02)
 
     # Plot the predicted vs observed coverage, loop through first dimension of Y_pred
-    for i in range(Y_pred.shape[0]):#Y_pred.shape[0]
-        predicted = Y_pred[i]
-        observed = Y_test_filtered_eval[i]
+    for i in range(Y_pred.shape[0]): # Y_pred.shape[0]
+        predicted = Y_pred[i, :, 0]
+        observed = Y_test_filtered_eval[i, :, 0]
         window_start = Y_test_filtered[i, 0]
         window_end = Y_test_filtered[i, 1]
-        #print("window start", window_start)
-        #print("window end", window_end)
-        #print("length of predicted", len(predicted))
-        #print("length of observed", len(observed))
-        #print("length of window", window_end - window_start)
-        plot_predicted_vs_observed_TU_during_training(model_name, predicted, observed, outdir, dataset_name, promoter_df, terminator_df, gene_df, binsize, window_start, window_end, log_scale=False, pad_symbol= pad_symbol)
+        #print("window_start: ", window_start)
+        #print("window_end: ", window_end)
+        #print("shape of observed: ", observed.shape)
+        #print("shape of predicted: ", predicted.shape)
+        plot_predicted_vs_observed_TU_during_training_probab(model_name, predicted, observed, outdir, dataset_name, promoter_df, terminator_df, gene_df, binsize, window_start, window_end, log_scale=False, pad_symbol= pad_symbol)
 
     # Write metrics to a text file
     metrics_filename = os.path.join(outdir, dataset_name + "_outputs", f"{model_name}_evaluation_metrics.txt")

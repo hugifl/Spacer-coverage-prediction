@@ -23,27 +23,46 @@ batch_size = 64
 dataset_name = '3200_1600_gene_norm'
 
 
-
 model_configurations = {
-    'CNN_biLSTM_17_2': {
+    'test': {
         'architecture': CNN_biLSTM_1,
         'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], #,'TU_forward_start_end', 'TU_reverse_start_end', 'TU_forward_body', 'TU_reverse_body'
-        'epochs': 50,
+        'epochs': 2,
         'learning_rate': 0.005,
-        'CNN_num_layers_seq': 2,
-        'CNN_num_layers_anno': 2,
-        'filter_number_seq': [50,100],
-        'filter_number_anno': [50,100],
-        'kernel_size_seq': [3,3],
-        'kernel_size_anno': [3,3],
-        'biLSTM_num_layers_seq': 1,
-        'biLSTM_num_layers_anno': 1,
-        'unit_numbers_seq': [24],
-        'unit_numbers_anno': [24],
-        'unit_numbers_combined': 8,
+        'CNN_num_layers_seq': 1,
+        'CNN_num_layers_anno': 1,
+        'filter_number_seq': [50],
+        'filter_number_anno': [50],
+        'kernel_size_seq': [3],
+        'kernel_size_anno': [3],
+        'biLSTM_num_layers_seq': 0,
+        'biLSTM_num_layers_anno': 0,
+        'unit_numbers_seq': [],
+        'unit_numbers_anno': [],
+        'unit_numbers_combined': 0,
         'only_seq': True
     }
 }
+#model_configurations = {
+#    'CNN_biLSTM_17_6': {
+#        'architecture': CNN_biLSTM_1,
+#        'features': ['gene_vector'], #,'TU_forward_start_end', 'TU_reverse_start_end', 'TU_forward_body', 'TU_reverse_body'
+#        'epochs': 50,
+#        'learning_rate': 0.005,
+#        'CNN_num_layers_seq': 2,
+#        'CNN_num_layers_anno': 2,
+#        'filter_number_seq': [50,100],
+#        'filter_number_anno': [50,100],
+#        'kernel_size_seq': [3,3],
+#        'kernel_size_anno': [3,3],
+#        'biLSTM_num_layers_seq': 1,
+#        'biLSTM_num_layers_anno': 1,
+#        'unit_numbers_seq': [24],
+#        'unit_numbers_anno': [24],
+#        'unit_numbers_combined': 8,
+#        'only_seq': False
+#    }
+#}
 
 
 

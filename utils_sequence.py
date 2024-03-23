@@ -27,18 +27,26 @@ def one_hot_encode(seq):
 def extract_sequences_and_sequence_info_TU(df, genome, gene_df, promoter_df, terminator_df, TU_df, pad_symbol):
     print("start building sequence dataset")
     sequences = []
-
+    pad_symbol = float(pad_symbol) 
     no_rows = df.shape[0]
     counter = 0
-    max_length = df['Length'].max()
+    max_length = 0
+    for _, row in df.iterrows():
+        start = int(row['Start'])
+        end = int(row['End'])
+        length = end - start
+        if length > max_length:
+            max_length = length
+    
 
     for _, row in df.iterrows():
-        TU_length = int(row['Length'])
+        TU_start, TU_end = int(row['Start']), int(row['End'])
+        TU_length = TU_end - TU_start
         TU_direction = row['Direction']
         counter += 1
         #print("fraction done: ")
         #print(counter / no_rows)
-        TU_start, TU_end = int(row['Start']), int(row['End'])
+        
         seq = genome[TU_start:TU_end]
 
         # One-hot encode DNA sequence
@@ -59,7 +67,7 @@ def extract_sequences_and_sequence_info_TU(df, genome, gene_df, promoter_df, ter
                 continue
       
             gene_start = int(gene_row['Left']) - TU_start 
-            gene_end = int(gene_row['Right']) - TU_end 
+            gene_end = int(gene_row['Right']) - TU_start 
             if 0 <= gene_start < TU_length:
                 gene_vector[gene_start] = 1
             if 0 <= gene_end < TU_length:
@@ -108,6 +116,11 @@ def extract_sequences_and_sequence_info_TU(df, genome, gene_df, promoter_df, ter
                 if TU_direction == '-':
                     terminator_vector = terminator_vector[::-1]
 
+        gene_vector = gene_vector.astype(float)
+        promoter_vector = promoter_vector.astype(float)
+        terminator_vector = terminator_vector.astype(float)
+        gene_directionality_vector = gene_directionality_vector.astype(float)
+        
         # Pad vectors to max_length
         if TU_length < max_length:
             pad_length = max_length - TU_length

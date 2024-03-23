@@ -193,7 +193,10 @@ else:
 coverage_df_TU_and_library_size_normalized = normalize_coverage_for_tot_aligned_reads_TU(coverage_df_TU_normalized, total_aligned_reads, expected_aligned_reads_per_experiment)
 coverage_df_TU_and_library_size_normalized_lowest_TU_removed = remove_lowest_expressed_TUs(coverage_df_TU_and_library_size_normalized, low_expressed_TUs)    
 print("Saving data")
-# Save data frame
+# save low expressed TUs
+low_expressed_TUs_file = outdir + 'low_expressed_TUs.csv'
+low_expressed_TUs_df = pd.DataFrame(low_expressed_TUs)
+low_expressed_TUs_df.to_csv(low_expressed_TUs_file, index=False)
 
 coverage_df_TU_and_library_size_normalized.to_csv(outdir+'TU_coverage_data_summed.csv', index=False)
 coverage_df_TU_and_library_size_normalized_lowest_TU_removed.to_csv(outdir+'TU_coverage_data_summed_TU_removed.csv', index=False)

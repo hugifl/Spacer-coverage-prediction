@@ -1,5 +1,5 @@
 #from models import CNN_BiLSTM_custom_pooling_dual_input_4_3, CNN_BiLSTM_custom_pooling_dual_input_4_2, CNN_BiLSTM_custom_pooling_dual_input_4 ,CNN_BiLSTM_custom_pooling_dual_input, CNN_BiLSTM_custom_pooling_dual_input_2, CNN_BiLSTM_avg_pooling_4_dual_input, CNN_BiLSTM_avg_pooling_4_dual_input_2
-from models_2 import CNN_biLSTM_1_Masking, CNN_biLSTM_Custom_Attention_Masking, CNN_biLSTM_1_Masking_TBi_Attention, CNN_biLSTM_1_Masking_TBi_Attention_2, CNN_biLSTM_1_Masking_TBi_Attention_3
+from models_2 import CNN_biLSTM_1_Masking_sep, CNN_biLSTM_Custom_Attention_Masking, CNN_biLSTM_1_Masking_TBi_Attention_sep
 import keras
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from custom_elements import  poisson_loss, poisson_loss_with_masking, NaNChecker, calculate_pearson_correlation, find_and_plot_peaks, calculate_peak_f1_score, PearsonCorrelationCallback_TU, F1ScoreCallback_TU
 from tensorflow.keras.callbacks import EarlyStopping, LambdaCallback
 from keras.callbacks import ModelCheckpoint
-from utils_training import filter_annotation_features_TU, evaluate_model, custom_batch_generator, clip_test_set, calculate_total_batches, restrict_TU_lengths, add_missing_padding
+from utils_training import filter_annotation_features_TU, evaluate_model, custom_batch_generator, clip_test_set, calculate_total_batches, restrict_TU_lengths, add_missing_padding, split_data_by_length,copy_model
 from scipy.signal import find_peaks
 import os
 import re
@@ -23,116 +23,15 @@ dataset_name = 'Transcriptional_Units_TU_norm_V2_2'
 pad_symbol = 0.420
 
 
-model_configurations = {
-    'CNN_biLSTM_1_Masking_restr_TBi_Attention_3': {
-        'architecture': CNN_biLSTM_1_Masking_TBi_Attention_3,
-        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
-        'epochs': 100,
-        'learning_rate': 0.0025,
-        'CNN_num_layers_seq': 2,
-        'CNN_num_layers_anno': 2,
-        'filter_number_seq': [100,100,100],
-        'filter_number_anno': [100,100,100],
-        'kernel_size_seq': [3,3,3],
-        'kernel_size_anno': [3,3,3],
-        'biLSTM_num_layers_seq': 1,
-        'biLSTM_num_layers_anno': 0,
-        'unit_numbers_seq': [24],
-        'unit_numbers_anno': [],
-        'unit_numbers_combined': 8,
-        'only_seq': False
-    }
-}
+
+
 
 #model_configurations = {
-#    'CNN_biLSTM_1_Masking_restr_TBi_Attention_2': {
-#        'architecture': CNN_biLSTM_1_Masking_TBi_Attention_2,
+#    'test_pre_training': {
+#        'architecture': CNN_biLSTM_1_Masking_sep,
 #        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
-#        'epochs': 100,
-#        'learning_rate': 0.0025,
-#        'CNN_num_layers_seq': 2,
-#        'CNN_num_layers_anno': 2,
-#        'filter_number_seq': [100,100],
-#        'filter_number_anno': [100,100],
-#        'kernel_size_seq': [3,3],
-#        'kernel_size_anno': [3,3],
-#        'biLSTM_num_layers_seq': 1,
-#        'biLSTM_num_layers_anno': 1,
-#        'unit_numbers_seq': [24],
-#        'unit_numbers_anno': [24],
-#        'unit_numbers_combined': 8,
-#        'only_seq': False
-#    }
-#}
-
-#model_configurations = {
-#    'CNN_biLSTM_1_Masking_restr_TBi_Attention_1': {
-#        'architecture': CNN_biLSTM_1_Masking_TBi_Attention,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
-#        'epochs': 100,
-#        'learning_rate': 0.0025,
-#        'CNN_num_layers_seq': 2,
-#        'CNN_num_layers_anno': 2,
-#        'filter_number_seq': [100,100],
-#        'filter_number_anno': [100,100],
-#        'kernel_size_seq': [3,3],
-#        'kernel_size_anno': [3,3],
-#        'biLSTM_num_layers_seq': 1,
-#        'biLSTM_num_layers_anno': 1,
-#        'unit_numbers_seq': [24],
-#        'unit_numbers_anno': [24],
-#        'unit_numbers_combined': 8,
-#        'only_seq': False
-#    }
-#}
-
-#model_configurations = {
-#    'CNN_biLSTM_1_Masking_restr_new_2': {
-#        'architecture': CNN_biLSTM_1_Masking,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
-#        'epochs': 100,
-#        'learning_rate': 0.001,
-#        'CNN_num_layers_seq': 3,
-#        'CNN_num_layers_anno': 3,
-#        'filter_number_seq': [50,100,100],
-#        'filter_number_anno': [50,100,100],
-#        'kernel_size_seq': [3,3,3],
-#        'kernel_size_anno': [3,3,3],
-#        'biLSTM_num_layers_seq': 1,
-#        'biLSTM_num_layers_anno': 1,
-#        'unit_numbers_seq': [24],
-#        'unit_numbers_anno': [24],
-#        'unit_numbers_combined': 8,
-#        'only_seq': False
-#    }
-#}
-
-#model_configurations = {
-#    'CNN_biLSTM_Custom_Attention_Masking_1': {
-#        'architecture': CNN_biLSTM_Custom_Attention_Masking,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
-#        'epochs': 50,
-#        'learning_rate': 0.005,
-#        'CNN_num_layers_seq': 2,
-#        'CNN_num_layers_anno': 2,
-#        'filter_number_seq': [50,100],
-#        'filter_number_anno': [50,100],
-#        'kernel_size_seq': [3,3],
-#        'kernel_size_anno': [3,3],
-#        'biLSTM_num_layers_seq': 1,
-#        'biLSTM_num_layers_anno': 1,
-#        'unit_numbers_seq': [24],
-#        'unit_numbers_anno': [24],
-#        'unit_numbers_combined': 8,
-#        'only_seq': False
-#    }
-#}
-
-#model_configurations = {
-#    'test': {
-#        'architecture': CNN_biLSTM_1_Masking,
-#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
-#        'epochs': 1,
+#        'epochs_pre_training': 1,
+#        'epochs_sep_training': 3,
 #        'learning_rate': 0.005,
 #        'CNN_num_layers_seq': 1,
 #        'CNN_num_layers_anno': 1,
@@ -149,6 +48,51 @@ model_configurations = {
 #    }
 #}
 
+#model_configurations = {
+#    'CNN_biLSTM_1_Masking_restr_new_sep_TBi_1': {
+#        'architecture': CNN_biLSTM_1_Masking_TBi_Attention_sep,
+#        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
+#        'epochs_pre_training': 40,
+#        'epochs_sep_training': 40,
+#        'learning_rate': 0.005,
+#        'CNN_num_layers_seq': 2,
+#        'CNN_num_layers_anno': 2,
+#        'filter_number_seq': [50,100],
+#        'filter_number_anno': [50,100],
+#        'kernel_size_seq': [3,3],
+#        'kernel_size_anno': [3,3],
+#        'biLSTM_num_layers_seq': 1,
+#        'biLSTM_num_layers_anno': 1,
+#        'unit_numbers_seq': [24],
+#        'unit_numbers_anno': [24],
+#        'unit_numbers_combined': 8,
+#        'only_seq': False
+#    }
+#}
+
+model_configurations = {
+    'CNN_biLSTM_1_Masking_restr_new_sep_3': {
+        'architecture': CNN_biLSTM_1_Masking_sep,
+        'features': ['gene_vector', 'promoter_vector', 'terminator_vector', 'gene_directionality_vector'], 
+        'epochs_pre_training': 7,
+        'epochs_sep_training': 50,
+        'learning_rate': 0.005,
+        'CNN_num_layers_seq': 2,
+        'CNN_num_layers_anno': 2,
+        'filter_number_seq': [50,100],
+        'filter_number_anno': [50,100],
+        'kernel_size_seq': [3,3],
+        'kernel_size_anno': [3,3],
+        'biLSTM_num_layers_seq': 1,
+        'biLSTM_num_layers_anno': 1,
+        'unit_numbers_seq': [24],
+        'unit_numbers_anno': [24],
+        'unit_numbers_combined': 8,
+        'only_seq': False
+    }
+}
+
+n_split = 4
 ###############################################################
 outdir = '../spacer_coverage_output_2/'
 data_dir = '/cluster/scratch/hugifl/spacer_coverage_final_data_2/'
@@ -195,7 +139,6 @@ X_train_filtered, Y_train_filtered = restrict_TU_lengths(X_train_filtered, Y_tra
 
 
 for model_name, config in model_configurations.items():
-    
     checkpoint_dir = os.path.join(outdir, dataset_name + "_outputs", "checkpoints", model_name)
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
@@ -212,7 +155,9 @@ for model_name, config in model_configurations.items():
 
     # Filter the annotation arrays
     X_train_anno, X_test_anno = filter_annotation_features_TU(X_train_anno, X_test_anno, config['features'])
-    
+
+    ##############################################      PRE TRAINING      ########################################################
+    print("Training model on full dataset")
     train_generator = custom_batch_generator(X_train_seq, X_train_anno, Y_train_filtered, batch_size)
     validation_generator = custom_batch_generator(X_test_seq, X_test_anno, Y_test_filtered, batch_size)
 
@@ -223,7 +168,7 @@ for model_name, config in model_configurations.items():
     early_stopping = EarlyStopping(
     monitor='val_loss',  
     min_delta=0.0005,     
-    patience=20,     #10    
+    patience=5,        
     restore_best_weights=True  
     )   
 
@@ -285,7 +230,7 @@ for model_name, config in model_configurations.items():
     else:
         print("No checkpoint found, starting training from scratch")
 
-    total_epochs = config['epochs']
+    total_epochs = config['epochs_pre_training']
     epochs_to_run = total_epochs - epochs_already_ran
     # Train the model
     history = model.fit(
@@ -306,16 +251,11 @@ for model_name, config in model_configurations.items():
     avg_pearson_correlation, avg_f1_score = evaluate_model(Y_test_filtered_eval, Y_pred, model_name, outdir, dataset_name, pad_symbol= pad_symbol, width=10, prominence=0.05, overlap_threshold=0.02)
 
     # Plot the predicted vs observed coverage, loop through first dimension of Y_pred
-    for i in range(Y_pred.shape[0]):#Y_pred.shape[0]
+    for i in range(Y_pred.shape[0]):
         predicted = Y_pred[i]
         observed = Y_test_filtered_eval[i]
         window_start = Y_test_filtered[i, 0]
         window_end = Y_test_filtered[i, 1]
-        #print("window start", window_start)
-        #print("window end", window_end)
-        #print("length of predicted", len(predicted))
-        #print("length of observed", len(observed))
-        #print("length of window", window_end - window_start)
         plot_predicted_vs_observed_TU_during_training(model_name, predicted, observed, outdir, dataset_name, promoter_df, terminator_df, gene_df, binsize, window_start, window_end, log_scale=False, pad_symbol= pad_symbol)
 
     # Write metrics to a text file
@@ -358,3 +298,103 @@ for model_name, config in model_configurations.items():
     plt.legend()
     plt.savefig(loss_plot_directory + "validation_loss.png")
     plt.close()
+
+    #########################################################################  SEPERATE TRAINING ###################################################################
+    print("Training model on seperate datasets")
+
+    sub_datasets_train = split_data_by_length(X_train_seq, X_train_anno, Y_train_filtered, N=n_split)
+    sub_datasets_test = split_data_by_length(X_test_seq, X_test_anno, Y_test_filtered, N=n_split)
+
+    models = copy_model(model, N=n_split)
+
+    for i, model in enumerate(models):
+        local_model_name = f"{model_name}_split_{i}"
+        X_train_seq, X_train_anno, Y_train_filtered = sub_datasets_train[i]
+        X_test_seq, X_test_anno, Y_test_filtered = sub_datasets_test[i]
+        X_test_seq_eval, X_test_anno_eval, Y_test_filtered_eval = clip_test_set(X_test_seq, X_test_anno, Y_test_filtered)  
+
+        optimizer_sep = tf.keras.optimizers.Adam(learning_rate=config['learning_rate'])
+        model.compile(optimizer=optimizer_sep, loss=poisson_loss_with_masking, run_eagerly=True)
+        
+        train_generator_sep = custom_batch_generator(X_train_seq, X_train_anno, Y_train_filtered, batch_size)
+        validation_generator_sep = custom_batch_generator(X_test_seq, X_test_anno, Y_test_filtered, batch_size)
+
+        train_steps_per_epoch_sep = calculate_total_batches(Y_train_filtered, batch_size=batch_size, max_length_threshold=4000)
+        val_steps_per_epoch_sep = calculate_total_batches(Y_test_filtered, batch_size=batch_size, max_length_threshold=4000)
+
+        pearson_callback_sep = PearsonCorrelationCallback_TU(train_generator_sep, num_samples=10, use_log=True, plot=False, pad_symbol= pad_symbol)
+        f1_callback_sep = F1ScoreCallback_TU(train_generator_sep, num_samples=10, width=10, prominence=0.05, overlap_threshold=0.02, pad_symbol= pad_symbol)
+
+
+
+        callbacks_list_sep = [early_stopping, nan_checker, pearson_callback_sep, f1_callback_sep] #checkpoint_callback
+        custom_objects_sep = {'poisson_loss': poisson_loss_with_masking}
+
+        total_epochs = config['epochs_sep_training']
+        epochs_to_run_sep = total_epochs
+        # Train the model
+        history = model.fit(
+            train_generator_sep,
+            steps_per_epoch=train_steps_per_epoch_sep,
+            epochs=epochs_to_run_sep,
+            validation_data=validation_generator_sep,
+            validation_steps=val_steps_per_epoch_sep,
+            callbacks=callbacks_list_sep
+        )
+
+        test_loss = model.evaluate([X_test_seq_eval, X_test_anno_eval], Y_test_filtered_eval, batch_size=len(X_test_seq_eval), verbose=0)
+
+        # Predict on the test set
+        Y_pred = model.predict([X_test_seq_eval, X_test_anno_eval])
+
+        # Calculate average Pearson correlation and F1 score using the provided evaluate_model function
+        avg_pearson_correlation, avg_f1_score = evaluate_model(Y_test_filtered_eval, Y_pred, local_model_name, outdir, dataset_name, pad_symbol= pad_symbol, width=10, prominence=0.05, overlap_threshold=0.02)
+
+        # Plot the predicted vs observed coverage, loop through first dimension of Y_pred
+        for i in range(Y_pred.shape[0]):
+            predicted = Y_pred[i]
+            observed = Y_test_filtered_eval[i]
+            window_start = Y_test_filtered[i, 0]
+            window_end = Y_test_filtered[i, 1]
+            plot_predicted_vs_observed_TU_during_training(local_model_name, predicted, observed, outdir, dataset_name, promoter_df, terminator_df, gene_df, binsize, window_start, window_end, log_scale=False, pad_symbol= pad_symbol)
+
+        # Write metrics to a text file
+        metrics_filename = os.path.join(outdir, dataset_name + "_outputs", f"{local_model_name}_evaluation_metrics.txt")
+        with open(metrics_filename, 'w') as file:
+            file.write(f"Test Loss: {test_loss}\n")  # Assuming test_loss is a list with the loss as the first element
+            file.write(f"Average Pearson Correlation: {avg_pearson_correlation:.4f}\n")
+            file.write(f"Average F1 Score: {avg_f1_score:.4f}\n")
+
+        print(f"Metrics written to {metrics_filename}")
+
+        print(f"Average Pearson Correlation on Test Set: {avg_pearson_correlation:.4f}")
+        print(f"Average F1 Score on Test Set: {avg_f1_score:.4f}")
+
+
+        model.save(outdir + dataset_name + "_outputs"+"/models/" + local_model_name)
+
+        loss_plot_directory = outdir + dataset_name + "_outputs"+f"/loss_plots_{local_model_name}/"
+
+        if not os.path.exists(loss_plot_directory):
+            os.makedirs(loss_plot_directory)
+
+        # Plot training & validation loss values
+        plt.style.use('ggplot')
+        plt.figure(figsize=(12, 6))
+        plt.plot(history.history['loss'], label='Training loss')
+        plt.title('Model Loss Over Epochs')
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch') 
+        plt.legend()
+        plt.savefig(loss_plot_directory + "training_loss.png")
+        plt.close()
+
+        plt.style.use('ggplot')
+        plt.figure(figsize=(12, 6))
+        plt.plot(history.history['val_loss'], label='Validation loss')
+        plt.title('Model Loss Over Epochs')
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch')
+        plt.legend()
+        plt.savefig(loss_plot_directory + "validation_loss.png")
+        plt.close()
